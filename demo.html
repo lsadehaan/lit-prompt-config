@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>prompt-config — Demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+      background: #f5f5f4;
+      color: #1c1917;
+      min-height: 100vh;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0c0a09; color: #fafaf9; }
+    }
+
+    .demo-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    @media (max-width: 900px) {
+      .demo-layout {
+        grid-template-columns: 1fr;
+        padding: 16px;
+      }
+    }
+
+    .demo-col { display: flex; flex-direction: column; gap: 16px; }
+
+    .demo-header {
+      padding: 16px 0;
+    }
+    .demo-header h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .demo-header p {
+      font-size: 14px;
+      color: #78716c;
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid #d6d3d1;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    @media (prefers-color-scheme: dark) {
+      .panel { background: #1c1917; border-color: #44403c; }
+    }
+
+    .panel-header {
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #e7e5e4;
+      color: #78716c;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    @media (prefers-color-scheme: dark) {
+      .panel-header { border-color: #44403c; }
+    }
+
+    .panel-body {
+      padding: 14px;
+    }
+
+    pre {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11.5px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 600px;
+      overflow-y: auto;
+      color: #57534e;
+    }
+    @media (prefers-color-scheme: dark) {
+      pre { color: #d6d3d1; }
+    }
+
+    .event-log {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .event-item {
+      padding: 6px 0;
+      border-bottom: 1px solid #f5f5f4;
+      font-size: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .event-item { border-color: #292524; }
+    }
+    .event-item .event-name {
+      font-family: 'IBM Plex Mono', monospace;
+      color: #d97706;
+      font-weight: 500;
+    }
+    .event-item .event-time {
+      color: #a8a29e;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10.5px;
+    }
+
+    .badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: #d97706;
+      color: white;
+      font-weight: 500;
+    }
+
+    .code-block {
+      background: #292524;
+      color: #d6d3d1;
+      padding: 14px;
+      border-radius: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      overflow-x: auto;
+    }
+    .code-block .comment { color: #78716c; }
+    .code-block .tag { color: #f59e0b; }
+    .code-block .attr { color: #60a5fa; }
+    .code-block .str { color: #34d399; }
+  </style>
+</head>
+<body>
+
+  <div class="demo-layout">
+    <!-- Left: the component -->
+    <div class="demo-col">
+      <div class="demo-header">
+        <h1>&lt;prompt-config&gt;</h1>
+        <p>LLM prompt management component · Models via OpenRouter</p>
+      </div>
+
+      <prompt-config id="pc"
+        theme="auto"
+      ></prompt-config>
+    </div>
+
+    <!-- Right: live JSON + events + usage -->
+    <div class="demo-col">
+      <div class="panel" style="flex:1; display:flex; flex-direction:column;">
+        <div class="panel-header">
+          Live JSON Output
+          <button id="copyBtn" style="font-size:11px; padding:3px 10px; border:1px solid #d6d3d1; border-radius:4px; background:transparent; cursor:pointer; color:inherit; font-family:inherit;">
+            Copy
+          </button>
+        </div>
+        <div class="panel-body" style="flex:1; overflow:auto;">
+          <pre id="jsonOutput">Loading...</pre>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          Event Log
+          <span class="badge" id="eventCount">0</span>
+        </div>
+        <div class="panel-body">
+          <div class="event-log" id="eventLog">
+            <div style="color:#a8a29e; font-size:12px;">Waiting for events…</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">Usage Example</div>
+        <div class="panel-body">
+          <div class="code-block"><span class="comment">// HTML</span>
+<span class="tag">&lt;prompt-config</span>
+  <span class="attr">.value</span>=<span class="str">${JSON.stringify({...})}</span>
+  <span class="attr">.providerFilter</span>=<span class="str">${['anthropic','openai']}</span>
+  <span class="attr">@prompt-change</span>=<span class="str">${(e) => save(e.detail)}</span>
+  <span class="attr">@prompt-test</span>=<span class="str">${async (e) => {
+    e.target.setTestLoading(true);
+    try {
+      const r = await api(e.detail.payload);
+      e.target.setTestResult(r);
+    } catch(err) {
+      e.target.setTestError(err);
+    }
+  }}</span>
+<span class="tag">&gt;&lt;/prompt-config&gt;</span>
+
+<span class="comment">// The test event payload includes:</span>
+<span class="comment">// e.detail.config  — full config object</span>
+<span class="comment">// e.detail.payload — OpenRouter-compatible request body</span>
+<span class="comment">// Send payload to your backend → forward to OpenRouter</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import './prompt-config.js';
+
+    const pc = document.getElementById('pc');
+    const jsonOutput = document.getElementById('jsonOutput');
+    const eventLog = document.getElementById('eventLog');
+    const eventCount = document.getElementById('eventCount');
+    const copyBtn = document.getElementById('copyBtn');
+    let count = 0;
+
+    // Set initial value
+    pc.value = {
+      id: 'demo-summarizer',
+      name: 'Article Summarizer',
+      model: '',
+      systemPrompt: 'You are a concise article summarizer. Extract the key points and present them clearly.',
+      userPromptTemplate: 'Please summarize the following article in {{num_sentences}} sentences:\n\n{{article_text}}',
+      temperature: 0.7,
+      maxTokens: 1024,
+      topP: 1.0,
+      topK: 0,
+      frequencyPenalty: 0,
+      presencePenalty: 0,
+      repetitionPenalty: 1.0,
+      minP: 0,
+      stopSequences: [],
+      responseFormat: 'text',
+      jsonSchema: null,
+      tools: [],
+      toolChoice: 'auto',
+      reasoning: false,
+      reasoningEffort: 'medium',
+      sampleInputs: {
+        num_sentences: '3',
+        article_text: 'Artificial intelligence continues to reshape industries worldwide. From healthcare diagnostics to autonomous vehicles, AI applications are expanding rapidly. Recent advances in large language models have particularly accelerated the pace of change.'
+      },
+      metadata: {}
+    };
+
+    // Update JSON display
+    function updateJson(config) {
+      jsonOutput.textContent = JSON.stringify(config, null, 2);
+    }
+    updateJson(pc.value);
+
+    // Listen to events
+    pc.addEventListener('prompt-change', (e) => {
+      updateJson(e.detail);
+      logEvent('prompt-change', 'Config updated');
+    });
+
+    pc.addEventListener('prompt-save', (e) => {
+      updateJson(e.detail);
+      logEvent('prompt-save', 'Save requested');
+      // In a real app: await fetch('/api/prompts', { method: 'POST', body: JSON.stringify(e.detail) })
+    });
+
+    pc.addEventListener('prompt-test', async (e) => {
+      logEvent('prompt-test', `Model: ${e.detail.config.model}`);
+      pc.setTestLoading(true);
+
+      // Simulate a backend call with 1.5s delay
+      await new Promise(r => setTimeout(r, 1500));
+
+      // Simulate a response (in real usage, send e.detail.payload to your backend)
+      pc.setTestResult(
+        'This is a simulated response. In production, you would:\n\n' +
+        '1. Send e.detail.payload to your backend\n' +
+        '2. Your backend forwards it to OpenRouter (or any provider)\n' +
+        '3. Return the response and call el.setTestResult(response)\n\n' +
+        'The payload sent was:\n' +
+        JSON.stringify(e.detail.payload, null, 2)
+      );
+    });
+
+    function logEvent(name, detail) {
+      count++;
+      eventCount.textContent = count;
+      const time = new Date().toLocaleTimeString();
+      const item = document.createElement('div');
+      item.className = 'event-item';
+      item.innerHTML = `<span class="event-time">${time}</span> <span class="event-name">${name}</span> — ${detail}`;
+      if (eventLog.children[0]?.textContent?.includes('Waiting')) {
+        eventLog.innerHTML = '';
+      }
+      eventLog.prepend(item);
+    }
+
+    // Copy button
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(jsonOutput.textContent);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => copyBtn.textContent = 'Copy', 1500);
+    });
+  </script>
+</body>
+</html>
