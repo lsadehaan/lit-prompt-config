@@ -1,0 +1,113 @@
+name: Release & Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run build
+      run: npm run build
+
+    - name: Run tests
+      run: npm test
+
+  publish-npm:
+    name: Publish to NPM
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Upgrade npm to latest
+      run: npm install -g npm@latest
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build
+      run: npm run build
+
+    - name: Publish to NPM
+      run: npm publish --provenance --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  create-release:
+    name: Create GitHub Release
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Extract version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Create GitHub Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create ${{ github.ref_name }} \
+          --title "Release v${{ steps.version.outputs.VERSION }}" \
+          --notes "$(cat <<'EOF'
+        ## lit-prompt-config v${{ steps.version.outputs.VERSION }}
+
+        The missing UI for LLM prompt management.
+
+        ### Installation
+
+        ```bash
+        npm install lit-prompt-config
+        ```
+
+        Or use the CDN:
+
+        ```html
+        <script type="module" src="https://unpkg.com/lit-prompt-config@${{ steps.version.outputs.VERSION }}/dist/lit-prompt-config.bundled.js"></script>
+        ```
+
+        ### What's New
+
+        See commit history for changes.
+
+        ### Documentation
+
+        - [README](https://github.com/${{ github.repository }}/blob/main/README.md)
+
+        ### Bug Reports
+
+        Report issues at https://github.com/${{ github.repository }}/issues
+        EOF
+        )"

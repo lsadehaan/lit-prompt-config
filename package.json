@@ -1,0 +1,69 @@
+{
+  "name": "lit-prompt-config",
+  "version": "0.1.0",
+  "description": "Embeddable Lit web component for LLM prompt configuration. The missing UI for LLM prompt management.",
+  "type": "module",
+  "main": "dist/lit-prompt-config.js",
+  "module": "dist/lit-prompt-config.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/lit-prompt-config.js"
+    },
+    "./bundled": "./dist/lit-prompt-config.bundled.js",
+    "./helpers/openrouter": {
+      "types": "./dist/helpers/openrouter.d.ts",
+      "import": "./dist/helpers/openrouter.js"
+    },
+    "./helpers/langchain": {
+      "types": "./dist/helpers/langchain.d.ts",
+      "import": "./dist/helpers/langchain.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "helpers/langchain.py"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run clean && npm run build:types && npm run build:es && npm run build:bundle && npm run build:helpers",
+    "clean": "rm -rf dist",
+    "build:types": "tsc",
+    "build:es": "vite build",
+    "build:bundle": "vite build --config vite.config.bundled.ts",
+    "build:helpers": "vite build --config vite.config.helpers.ts",
+    "test": "echo \"No tests yet\" && exit 0",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "lit": "^3.0.0"
+  },
+  "devDependencies": {
+    "lit": "^3.2.1",
+    "typescript": "~5.6.3",
+    "vite": "^6.0.7"
+  },
+  "keywords": [
+    "lit",
+    "web-component",
+    "llm",
+    "prompt",
+    "openrouter",
+    "configuration",
+    "ai",
+    "chatgpt",
+    "claude",
+    "prompt-engineering"
+  ],
+  "author": "lsadehaan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lsadehaan/lit-prompt-config.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lsadehaan/lit-prompt-config/issues"
+  },
+  "homepage": "https://github.com/lsadehaan/lit-prompt-config#readme"
+}

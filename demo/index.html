@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>prompt-config — Demo</title>
+  <title>lit-prompt-config Demo</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -148,12 +148,10 @@
     <div class="demo-col">
       <div class="demo-header">
         <h1>&lt;prompt-config&gt;</h1>
-        <p>LLM prompt management component · Models via OpenRouter</p>
+        <p>LLM prompt management component - Models via OpenRouter</p>
       </div>
 
-      <prompt-config id="pc"
-        theme="auto"
-      ></prompt-config>
+      <prompt-config id="pc" theme="auto"></prompt-config>
     </div>
 
     <!-- Right: live JSON + events + usage -->
@@ -177,7 +175,7 @@
         </div>
         <div class="panel-body">
           <div class="event-log" id="eventLog">
-            <div style="color:#a8a29e; font-size:12px;">Waiting for events…</div>
+            <div style="color:#a8a29e; font-size:12px;">Waiting for events...</div>
           </div>
         </div>
       </div>
@@ -192,26 +190,26 @@
   <span class="attr">@prompt-change</span>=<span class="str">${(e) => save(e.detail)}</span>
   <span class="attr">@prompt-test</span>=<span class="str">${async (e) => {
     e.target.setTestLoading(true);
-    try {
-      const r = await api(e.detail.payload);
-      e.target.setTestResult(r);
-    } catch(err) {
-      e.target.setTestError(err);
-    }
+    const r = await api(e.detail.payload);
+    e.target.setTestResult(r);
   }}</span>
 <span class="tag">&gt;&lt;/prompt-config&gt;</span>
 
 <span class="comment">// The test event payload includes:</span>
-<span class="comment">// e.detail.config  — full config object</span>
-<span class="comment">// e.detail.payload — OpenRouter-compatible request body</span>
-<span class="comment">// Send payload to your backend → forward to OpenRouter</span></div>
+<span class="comment">// e.detail.config  - full config object</span>
+<span class="comment">// e.detail.payload - OpenRouter-compatible request body</span>
+<span class="comment">// Send payload to your backend, forward to OpenRouter</span></div>
         </div>
       </div>
     </div>
   </div>
 
   <script type="module">
-    import './prompt-config.js';
+    // Development: import from source
+    // import '../src/index.ts';
+
+    // Production: import from built bundle
+    import '../dist/lit-prompt-config.bundled.js';
 
     const pc = document.getElementById('pc');
     const jsonOutput = document.getElementById('jsonOutput');
@@ -264,23 +262,21 @@
     pc.addEventListener('prompt-save', (e) => {
       updateJson(e.detail);
       logEvent('prompt-save', 'Save requested');
-      // In a real app: await fetch('/api/prompts', { method: 'POST', body: JSON.stringify(e.detail) })
     });
 
     pc.addEventListener('prompt-test', async (e) => {
       logEvent('prompt-test', `Model: ${e.detail.config.model}`);
       pc.setTestLoading(true);
 
-      // Simulate a backend call with 1.5s delay
+      // Simulate a backend call
       await new Promise(r => setTimeout(r, 1500));
 
-      // Simulate a response (in real usage, send e.detail.payload to your backend)
       pc.setTestResult(
-        'This is a simulated response. In production, you would:\n\n' +
+        'This is a simulated response. In production:\n\n' +
         '1. Send e.detail.payload to your backend\n' +
-        '2. Your backend forwards it to OpenRouter (or any provider)\n' +
-        '3. Return the response and call el.setTestResult(response)\n\n' +
-        'The payload sent was:\n' +
+        '2. Your backend forwards it to OpenRouter\n' +
+        '3. Return the response and call setTestResult()\n\n' +
+        'Payload:\n' +
         JSON.stringify(e.detail.payload, null, 2)
       );
     });
@@ -291,7 +287,7 @@
       const time = new Date().toLocaleTimeString();
       const item = document.createElement('div');
       item.className = 'event-item';
-      item.innerHTML = `<span class="event-time">${time}</span> <span class="event-name">${name}</span> — ${detail}`;
+      item.innerHTML = `<span class="event-time">${time}</span> <span class="event-name">${name}</span> - ${detail}`;
       if (eventLog.children[0]?.textContent?.includes('Waiting')) {
         eventLog.innerHTML = '';
       }
