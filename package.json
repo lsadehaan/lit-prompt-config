@@ -1,6 +1,6 @@
 {
   "name": "lit-prompt-config",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Embeddable Lit web component for LLM prompt configuration. The missing UI for LLM prompt management.",
   "type": "module",
   "main": "dist/lit-prompt-config.js",
