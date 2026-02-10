@@ -1,8 +1,52 @@
 import { css } from 'lit';
 
+/**
+ * Theme CSS Custom Properties
+ *
+ * All theme variables can be overridden from outside the component:
+ *
+ * prompt-config {
+ *   --pc-accent: #0ea5e9;        // Change accent color to sky blue
+ *   --pc-radius: 12px;           // Increase border radius
+ *   --pc-font: 'Inter', sans-serif; // Use different font
+ * }
+ *
+ * Available variables:
+ *
+ * Colors:
+ *   --pc-bg              Main background
+ *   --pc-bg-section      Section/card background
+ *   --pc-bg-input        Input/textarea background
+ *   --pc-bg-hover        Hover state background
+ *   --pc-border          Border color
+ *   --pc-border-focus    Focused input border
+ *   --pc-text            Primary text color
+ *   --pc-text-secondary  Secondary text color
+ *   --pc-text-muted      Muted/hint text color
+ *   --pc-accent          Primary accent color (buttons, highlights)
+ *   --pc-accent-hover    Accent hover state
+ *   --pc-accent-bg       Accent background (selected items)
+ *   --pc-danger          Error/danger color
+ *   --pc-danger-bg       Error background
+ *   --pc-success         Success color
+ *   --pc-success-bg      Success background
+ *
+ * Layout:
+ *   --pc-radius          Border radius (default: 6px)
+ *   --pc-shadow          Box shadow
+ *   --pc-transition      Transition timing (default: 150ms ease)
+ *
+ * Typography:
+ *   --pc-font            Sans-serif font stack
+ *   --pc-font-mono       Monospace font stack
+ */
+
 export const promptConfigStyles = css`
+  /* ═══════════════════════════════════════════════════════════════════════════
+     LIGHT THEME (Default)
+     ═══════════════════════════════════════════════════════════════════════════ */
   :host {
-    /* Neutral professional palette */
+    /* Colors - Light */
     --pc-bg: #fafaf9;
     --pc-bg-section: #ffffff;
     --pc-bg-input: #f5f5f4;
@@ -19,11 +63,15 @@ export const promptConfigStyles = css`
     --pc-danger-bg: #fef2f2;
     --pc-success: #16a34a;
     --pc-success-bg: #f0fdf4;
+
+    /* Layout */
     --pc-radius: 6px;
-    --pc-font: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    --pc-font-mono: 'IBM Plex Mono', 'SF Mono', 'Consolas', monospace;
     --pc-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
     --pc-transition: 150ms ease;
+
+    /* Typography */
+    --pc-font: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --pc-font-mono: 'IBM Plex Mono', 'SF Mono', 'Consolas', monospace;
 
     display: block;
     font-family: var(--pc-font);
@@ -36,6 +84,56 @@ export const promptConfigStyles = css`
     overflow: hidden;
   }
 
+  /* ═══════════════════════════════════════════════════════════════════════════
+     FORCED LIGHT THEME
+     Use theme="light" to force light mode regardless of system preference
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :host([theme='light']) {
+    --pc-bg: #fafaf9;
+    --pc-bg-section: #ffffff;
+    --pc-bg-input: #f5f5f4;
+    --pc-bg-hover: #e7e5e4;
+    --pc-border: #d6d3d1;
+    --pc-border-focus: #78716c;
+    --pc-text: #1c1917;
+    --pc-text-secondary: #57534e;
+    --pc-text-muted: #a8a29e;
+    --pc-accent: #d97706;
+    --pc-accent-hover: #b45309;
+    --pc-accent-bg: #fffbeb;
+    --pc-danger: #dc2626;
+    --pc-danger-bg: #fef2f2;
+    --pc-success: #16a34a;
+    --pc-success-bg: #f0fdf4;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     DARK THEME
+     Applied when theme="dark" OR theme="auto" with system dark mode
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :host([theme='dark']) {
+    --pc-bg: #1c1917;
+    --pc-bg-section: #292524;
+    --pc-bg-input: #1c1917;
+    --pc-bg-hover: #44403c;
+    --pc-border: #44403c;
+    --pc-border-focus: #a8a29e;
+    --pc-text: #fafaf9;
+    --pc-text-secondary: #d6d3d1;
+    --pc-text-muted: #78716c;
+    --pc-accent: #f59e0b;
+    --pc-accent-hover: #fbbf24;
+    --pc-accent-bg: rgba(69, 26, 3, 0.2);
+    --pc-danger: #ef4444;
+    --pc-danger-bg: #450a0a;
+    --pc-success: #22c55e;
+    --pc-success-bg: #052e16;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     AUTO THEME (System Preference)
+     Use theme="auto" to follow OS dark/light mode setting
+     ═══════════════════════════════════════════════════════════════════════════ */
   @media (prefers-color-scheme: dark) {
     :host([theme='auto']) {
       --pc-bg: #1c1917;
@@ -49,27 +147,12 @@ export const promptConfigStyles = css`
       --pc-text-muted: #78716c;
       --pc-accent: #f59e0b;
       --pc-accent-hover: #fbbf24;
-      --pc-accent-bg: #451a0310;
+      --pc-accent-bg: rgba(69, 26, 3, 0.2);
+      --pc-danger: #ef4444;
       --pc-danger-bg: #450a0a;
+      --pc-success: #22c55e;
       --pc-success-bg: #052e16;
     }
-  }
-
-  :host([theme='dark']) {
-    --pc-bg: #1c1917;
-    --pc-bg-section: #292524;
-    --pc-bg-input: #1c1917;
-    --pc-bg-hover: #44403c;
-    --pc-border: #44403c;
-    --pc-border-focus: #a8a29e;
-    --pc-text: #fafaf9;
-    --pc-text-secondary: #d6d3d1;
-    --pc-text-muted: #78716c;
-    --pc-accent: #f59e0b;
-    --pc-accent-hover: #fbbf24;
-    --pc-accent-bg: #451a0310;
-    --pc-danger-bg: #450a0a;
-    --pc-success-bg: #052e16;
   }
 
   *,
@@ -581,5 +664,77 @@ export const promptConfigStyles = css`
     .model-search-row select {
       width: 100%;
     }
+  }
+
+  /* Card variant */
+  :host([variant='card']) {
+    background: var(--pc-bg-section);
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .card-main {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .card-fields {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .gear-btn {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--pc-radius);
+    color: var(--pc-text-muted);
+    transition: all var(--pc-transition);
+  }
+
+  .gear-btn:hover {
+    background: var(--pc-bg-hover);
+    color: var(--pc-accent);
+  }
+
+  /* Subsections within Advanced Settings */
+  .subsection {
+    margin-bottom: 20px;
+  }
+
+  .subsection:last-child {
+    margin-bottom: 0;
+  }
+
+  .subsection-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--pc-text-muted);
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--pc-border);
+  }
+
+  /* Divider */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--pc-border);
+    margin: 20px 0;
+  }
+
+  /* Test section styling */
+  .test-section {
+    background: var(--pc-bg-section);
+    border-bottom: 1px solid var(--pc-border);
   }
 `;

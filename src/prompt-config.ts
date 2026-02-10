@@ -1,7 +1,7 @@
 import { LitElement, html, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { promptConfigStyles } from './styles.js';
-import { DEFAULT_CONFIG, ALL_SECTIONS, PROVIDER_META } from './constants.js';
+import { DEFAULT_CONFIG, ALL_SECTIONS, PROVIDER_META, DEFAULT_LABELS } from './constants.js';
 import {
   extractTemplateVars,
   resolveTemplate,
@@ -17,7 +17,10 @@ import type {
   Message,
   OpenRouterPayload,
   ThemeMode,
+  Labels,
 } from './types.js';
+
+export type PromptConfigVariant = 'card' | 'full';
 
 /**
  * <prompt-config> - A Lit web component for LLM prompt management.
@@ -35,11 +38,15 @@ export class PromptConfigElement extends LitElement {
   @property({ type: Object })
   value: PromptConfig = { ...DEFAULT_CONFIG };
 
-  /** Which UI sections to show */
+  /** Display variant: 'card' (compact) or 'full' (all settings) */
+  @property({ type: String, reflect: true })
+  variant: PromptConfigVariant = 'full';
+
+  /** Which UI sections to show (only applies to full variant) */
   @property({ type: Array, attribute: 'enabled-sections' })
   enabledSections: SectionId[] = [...ALL_SECTIONS];
 
-  /** Filter models to specific providers */
+  /** Filter available providers to this list */
   @property({ type: Array, attribute: 'provider-filter' })
   providerFilter: string[] = [];
 
@@ -47,13 +54,22 @@ export class PromptConfigElement extends LitElement {
   @property({ type: String, reflect: true })
   theme: ThemeMode = 'auto';
 
+  /** Override UI labels for i18n */
+  @property({ type: Object })
+  labels: Partial<Labels> = {};
+
+  /** Merged labels (user overrides + defaults) */
+  private get _l(): Labels {
+    return { ...DEFAULT_LABELS, ...this.labels };
+  }
+
   // Internal state
   @state() private _models: OpenRouterModel[] = [];
   @state() private _modelsLoading = false;
   @state() private _modelsError: string | null = null;
   @state() private _modelSearch = '';
-  @state() private _selectedProvider = '__all__';
-  @state() private _expandedSections: Set<SectionId> = new Set(['model', 'prompts']);
+  @state() private _expanded = false; // For card variant expansion
+  @state() private _advancedOpen = false; // For collapsible advanced settings
   @state() private _testResult: string | object | null = null;
   @state() private _testError: string | null = null;
   @state() private _testLoading = false;
@@ -102,19 +118,13 @@ export class PromptConfigElement extends LitElement {
   private get _filteredModels(): OpenRouterModel[] {
     let models = this._models;
 
-    const providerFilters = this.providerFilter?.length
-      ? this.providerFilter
-      : this._selectedProvider !== '__all__'
-        ? [this._selectedProvider]
-        : [];
-
-    if (providerFilters.length) {
-      models = models.filter((m) => {
-        const prefix = m.id.split('/')[0];
-        return providerFilters.includes(prefix);
-      });
+    // Filter by selected provider in config
+    const provider = this.value?.provider;
+    if (provider) {
+      models = models.filter((m) => m.id.startsWith(provider + '/'));
     }
 
+    // Text search (only in full variant with model list)
     if (this._modelSearch.trim()) {
       const q = this._modelSearch.toLowerCase();
       models = models.filter(
@@ -132,12 +142,14 @@ export class PromptConfigElement extends LitElement {
       const prefix = m.id.split('/')[0];
       seen.set(prefix, (seen.get(prefix) || 0) + 1);
     }
-    const entries = [...seen.entries()]
-      .filter(
-        ([p]) => !this.providerFilter?.length || this.providerFilter.includes(p)
-      )
-      .sort((a, b) => b[1] - a[1]);
-    return entries;
+    let entries = [...seen.entries()];
+
+    // Apply provider filter if set
+    if (this.providerFilter?.length) {
+      entries = entries.filter(([p]) => this.providerFilter.includes(p));
+    }
+
+    return entries.sort((a, b) => b[1] - a[1]);
   }
 
   private get _selectedModel(): OpenRouterModel | undefined {
@@ -197,24 +209,14 @@ export class PromptConfigElement extends LitElement {
     }
   }
 
-  // ── Section toggling ────────────────────────────────────────────────────
-
-  private _toggleSection(name: SectionId): void {
-    const s = new Set(this._expandedSections);
-    if (s.has(name)) {
-      s.delete(name);
-    } else {
-      s.add(name);
-    }
-    this._expandedSections = s;
+  /** Expand the card to show full config (only in card variant) */
+  expand(): void {
+    this._expanded = true;
   }
 
-  private _isSectionEnabled(name: SectionId): boolean {
-    return this.enabledSections.includes(name);
-  }
-
-  private _isSectionOpen(name: SectionId): boolean {
-    return this._expandedSections.has(name);
+  /** Collapse back to card view (only in card variant) */
+  collapse(): void {
+    this._expanded = false;
   }
 
   // ── Events ──────────────────────────────────────────────────────────────
@@ -325,327 +327,355 @@ export class PromptConfigElement extends LitElement {
     input.click();
   }
 
+  private _onProviderChange(provider: string): void {
+    // When provider changes, clear the model selection
+    this._updateConfig({ provider, model: '' });
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────
 
   override render() {
+    // Card variant that's expanded shows full view
+    if (this.variant === 'card' && !this._expanded) {
+      return this._renderCard();
+    }
+    return this._renderFull();
+  }
+
+  // ── Card Variant ────────────────────────────────────────────────────────
+
+  private _renderCard() {
     const v = this.value || {};
+    const l = this._l;
+    return html`
+      <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        rel="stylesheet"
+      />
+      <div class="card">
+        <div class="card-main">
+          <div class="card-fields">
+            <div class="field">
+              <label>${l.name}</label>
+              <input
+                type="text"
+                .value=${v.name || ''}
+                placeholder=${l.placeholderName}
+                @input=${(e: Event) =>
+                  this._updateConfig({ name: (e.target as HTMLInputElement).value })}
+              />
+            </div>
+            <div class="field">
+              <label>${l.description}</label>
+              <input
+                type="text"
+                .value=${v.description || ''}
+                placeholder=${l.placeholderDescription}
+                @input=${(e: Event) =>
+                  this._updateConfig({ description: (e.target as HTMLInputElement).value })}
+              />
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>${l.provider}</label>
+                ${this._renderProviderDropdown(v)}
+              </div>
+              <div class="field">
+                <label>${l.model}</label>
+                ${this._renderModelDropdown(v)}
+              </div>
+            </div>
+          </div>
+          <button
+            class="icon-btn gear-btn"
+            title=${l.advancedConfiguration}
+            @click=${() => (this._expanded = true)}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderProviderDropdown(v: PromptConfig) {
+    const l = this._l;
+    if (this._modelsLoading) {
+      return html`<select disabled><option>${l.placeholderLoading}</option></select>`;
+    }
+    return html`
+      <select
+        .value=${v.provider || ''}
+        @change=${(e: Event) =>
+          this._onProviderChange((e.target as HTMLSelectElement).value)}
+      >
+        <option value="">${l.placeholderSelectProvider}</option>
+        ${this._availableProviders.map(
+          ([p, count]) => html`
+            <option value=${p}>
+              ${PROVIDER_META[p]?.label || p} (${count})
+            </option>
+          `
+        )}
+      </select>
+    `;
+  }
+
+  private _renderModelDropdown(v: PromptConfig) {
+    const l = this._l;
+    if (this._modelsLoading) {
+      return html`<select disabled><option>${l.placeholderLoading}</option></select>`;
+    }
+    if (!v.provider) {
+      return html`<select disabled><option>${l.placeholderSelectProviderFirst}</option></select>`;
+    }
+    const models = this._filteredModels;
+    return html`
+      <select
+        .value=${v.model || ''}
+        @change=${(e: Event) =>
+          this._updateConfig({ model: (e.target as HTMLSelectElement).value })}
+      >
+        <option value="">${l.placeholderSelectModel}</option>
+        ${models.map(
+          (m) => html`
+            <option value=${m.id}>${m.name}</option>
+          `
+        )}
+      </select>
+    `;
+  }
+
+  // ── Full Variant ────────────────────────────────────────────────────────
+
+  private _renderFull() {
+    const v = this.value || {};
+    const isExpandedCard = this.variant === 'card' && this._expanded;
+
     return html`
       <link
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
         rel="stylesheet"
       />
 
-      ${this._renderHeader()}
-      ${this._isSectionEnabled('identity')
-        ? this._renderSection('identity', 'Identity', this._renderIdentity(v))
-        : nothing}
-      ${this._isSectionEnabled('model')
-        ? this._renderSection(
-            'model',
-            'Model',
-            this._renderModelSelector(v),
-            this.value?.model ? this._selectedModel?.name : 'none'
-          )
-        : nothing}
-      ${this._isSectionEnabled('prompts')
-        ? this._renderSection('prompts', 'Prompts', this._renderPrompts(v))
-        : nothing}
-      ${this._isSectionEnabled('parameters')
-        ? this._renderSection(
-            'parameters',
-            'Parameters',
-            this._renderParameters(v)
-          )
-        : nothing}
-      ${this._isSectionEnabled('response')
-        ? this._renderSection(
-            'response',
-            'Response Format',
-            this._renderResponse(v)
-          )
-        : nothing}
-      ${this._isSectionEnabled('tools')
-        ? this._renderSection(
-            'tools',
-            'Tools',
-            this._renderTools(v),
-            v.tools?.length ? `${v.tools.length}` : null
-          )
-        : nothing}
-      ${this._isSectionEnabled('reasoning')
-        ? this._renderSection('reasoning', 'Reasoning', this._renderReasoning(v))
-        : nothing}
-      ${this._isSectionEnabled('test')
-        ? this._renderSection('test', 'Test Prompt', this._renderTest(v))
-        : nothing}
+      ${this._renderHeader(isExpandedCard)}
+
+      <!-- Test Section at Top -->
+      ${this._renderTestSection(v)}
+
+      <!-- Identity & Model Section -->
+      ${this._renderIdentitySection(v)}
+
+      <!-- Prompts Section -->
+      ${this._renderPromptsSection(v)}
+
+      <!-- Advanced Settings (Collapsible) -->
+      ${this._renderAdvancedSection(v)}
     `;
   }
 
-  private _renderHeader() {
+  private _renderHeader(isExpandedCard: boolean) {
+    const l = this._l;
     return html`
       <div class="header">
         <div class="header-title">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              d="M12 3l1.912 5.813h6.112l-4.968 3.612 1.912 5.813L12 14.625l-4.968 3.613 1.912-5.813-4.968-3.612h6.112z"
-            />
-          </svg>
-          Prompt Configuration
+          ${isExpandedCard
+            ? html`
+                <button
+                  class="icon-btn"
+                  @click=${() => (this._expanded = false)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
+              `
+            : html`
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+                </svg>
+              `}
+          ${isExpandedCard ? l.advancedConfiguration : l.promptConfiguration}
         </div>
         <div class="header-actions">
-          <button class="sm" @click=${this._onImport} title="Import JSON">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
+          <button class="sm" @click=${this._onImport}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            Import
+            ${l.import}
           </button>
-          <button class="sm" @click=${this._onExport} title="Export JSON">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
+          <button class="sm" @click=${this._onExport}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-            Export
+            ${l.export}
           </button>
           <button class="sm primary" @click=${this._onSave}>
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"
-              />
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
               <polyline points="17 21 17 13 7 13 7 21" />
               <polyline points="7 3 7 8 15 8" />
             </svg>
-            Save
+            ${l.save}
           </button>
         </div>
       </div>
     `;
   }
 
-  private _renderSection(
-    id: SectionId,
-    label: string,
-    content: unknown,
-    badge: string | null | undefined = null
-  ) {
-    const open = this._isSectionOpen(id);
+  private _renderTestSection(v: PromptConfig) {
+    const l = this._l;
+    const vars = this._templateVars;
+    const hasUnfilled = vars.some((vn) => !v.sampleInputs?.[vn]);
+    const noModel = !v.model;
+    const noPrompt = !v.systemPrompt && !v.userPromptTemplate;
+    const disabled = noModel || noPrompt || this._testLoading;
+
+    return html`
+      <div class="section test-section">
+        <div class="section-body" style="padding-top: 16px;">
+          <div class="test-bar">
+            <button class="primary" ?disabled=${disabled} @click=${this._onTest}>
+              ${this._testLoading
+                ? html`<span class="spinner"></span> ${l.testing}`
+                : html`
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                    ${l.testPrompt}
+                  `}
+            </button>
+            ${noModel
+              ? html`<span style="font-size:11px; color:var(--pc-text-muted)">${l.statusSelectModel}</span>`
+              : nothing}
+            ${!noModel && noPrompt
+              ? html`<span style="font-size:11px; color:var(--pc-text-muted)">${l.statusAddPrompt}</span>`
+              : nothing}
+            ${!noModel && !noPrompt && hasUnfilled
+              ? html`<span style="font-size:11px; color:var(--pc-accent)">${l.statusTemplateVarsEmpty}</span>`
+              : nothing}
+          </div>
+
+          ${this._testResult
+            ? html`
+                <div class="test-result success">
+                  <div class="test-result-header">${l.response}</div>
+                  <div class="test-result-body">
+                    ${typeof this._testResult === 'string'
+                      ? this._testResult
+                      : JSON.stringify(this._testResult, null, 2)}
+                  </div>
+                </div>
+              `
+            : nothing}
+          ${this._testError
+            ? html`
+                <div class="test-result error">
+                  <div class="test-result-header">${l.error}</div>
+                  <div class="test-result-body">${this._testError}</div>
+                </div>
+              `
+            : nothing}
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderIdentitySection(v: PromptConfig) {
+    const l = this._l;
     return html`
       <div class="section">
-        <div class="section-header" @click=${() => this._toggleSection(id)}>
-          <svg
-            class="section-chevron ${open ? 'open' : ''}"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-          >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-          <span class="section-label">${label}</span>
-          ${badge ? html`<span class="section-badge">${badge}</span>` : nothing}
+        <div class="section-body" style="padding-top: 16px;">
+          <div class="field-row">
+            <div class="field">
+              <label>${l.name}</label>
+              <input
+                type="text"
+                .value=${v.name || ''}
+                placeholder=${l.placeholderName}
+                @input=${(e: Event) =>
+                  this._updateConfig({ name: (e.target as HTMLInputElement).value })}
+              />
+            </div>
+            <div class="field">
+              <label>${l.configId}</label>
+              <input
+                type="text"
+                .value=${v.id || ''}
+                placeholder="e.g. summarize-article"
+                @input=${(e: Event) =>
+                  this._updateConfig({ id: (e.target as HTMLInputElement).value })}
+              />
+            </div>
+          </div>
+          <div class="field">
+            <label>${l.description}</label>
+            <input
+              type="text"
+              .value=${v.description || ''}
+              placeholder=${l.placeholderDescription}
+              @input=${(e: Event) =>
+                this._updateConfig({ description: (e.target as HTMLInputElement).value })}
+            />
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>${l.provider}</label>
+              ${this._renderProviderDropdown(v)}
+            </div>
+            <div class="field">
+              <label>${l.model}</label>
+              ${this._renderModelDropdown(v)}
+            </div>
+          </div>
+          ${this._selectedModel ? this._renderSelectedModelInfo(this._selectedModel) : nothing}
         </div>
-        ${open ? html`<div class="section-body">${content}</div>` : nothing}
-      </div>
-    `;
-  }
-
-  // ── Section: Identity ───────────────────────────────────────────────────
-
-  private _renderIdentity(v: PromptConfig) {
-    return html`
-      <div class="field-row">
-        <div class="field">
-          <label>Config ID</label>
-          <input
-            type="text"
-            .value=${v.id || ''}
-            placeholder="e.g. summarize-article"
-            @input=${(e: Event) =>
-              this._updateConfig({ id: (e.target as HTMLInputElement).value })}
-          />
-        </div>
-        <div class="field">
-          <label>Display Name</label>
-          <input
-            type="text"
-            .value=${v.name || ''}
-            placeholder="e.g. Article Summarizer"
-            @input=${(e: Event) =>
-              this._updateConfig({ name: (e.target as HTMLInputElement).value })}
-          />
-        </div>
-      </div>
-    `;
-  }
-
-  // ── Section: Model ──────────────────────────────────────────────────────
-
-  private _renderModelSelector(v: PromptConfig) {
-    if (this._modelsLoading) {
-      return html`<div class="empty-state">
-        <span class="spinner"></span>
-        <p>Loading models from OpenRouter...</p>
-      </div>`;
-    }
-    if (this._modelsError) {
-      return html`
-        <div class="empty-state">
-          <p>Failed to load models: ${this._modelsError}</p>
-          <button class="sm" @click=${() => this._fetchModels()}>Retry</button>
-        </div>
-      `;
-    }
-
-    const filtered = this._filteredModels;
-    const selected = this._selectedModel;
-
-    return html`
-      <div class="model-search-row">
-        <input
-          type="text"
-          placeholder="Search models..."
-          .value=${this._modelSearch}
-          @input=${(e: Event) =>
-            (this._modelSearch = (e.target as HTMLInputElement).value)}
-        />
-        ${!this.providerFilter?.length
-          ? html`
-              <select
-                .value=${this._selectedProvider}
-                @change=${(e: Event) =>
-                  (this._selectedProvider = (e.target as HTMLSelectElement)
-                    .value)}
-              >
-                <option value="__all__">
-                  All providers (${this._models.length})
-                </option>
-                ${this._availableProviders.map(
-                  ([p, count]) => html`
-                    <option value=${p}>
-                      ${PROVIDER_META[p]?.label || p} (${count})
-                    </option>
-                  `
-                )}
-              </select>
-            `
-          : nothing}
-      </div>
-
-      <div class="model-list">
-        ${filtered.length === 0
-          ? html`<div class="empty-state">
-              <p>No models match your filter.</p>
-            </div>`
-          : filtered
-              .slice(0, 100)
-              .map((m) => this._renderModelItem(m, v.model))}
-        ${filtered.length > 100
-          ? html`
-              <div
-                style="padding: 8px 10px; text-align:center; color: var(--pc-text-muted); font-size: 11px;"
-              >
-                Showing 100 of ${filtered.length} - refine your search
-              </div>
-            `
-          : nothing}
-      </div>
-
-      ${selected ? this._renderSelectedModelInfo(selected) : nothing}
-    `;
-  }
-
-  private _renderModelItem(m: OpenRouterModel, selectedId: string) {
-    const provider = m.id.split('/')[0];
-    const color = PROVIDER_META[provider]?.color || '#888';
-    const pricing = m.pricing || {};
-    const ctx = m.context_length;
-    return html`
-      <div
-        class="model-item ${m.id === selectedId ? 'selected' : ''}"
-        @click=${() => this._updateConfig({ model: m.id })}
-      >
-        <span class="model-provider-dot" style="background:${color}"></span>
-        <span class="model-name" title=${m.id}>${m.name}</span>
-        <span class="model-meta">
-          <span title="Context window">${formatContextLength(ctx)}</span>
-          <span title="Input price per 1M tokens"
-            >${formatPrice(pricing.prompt)}</span
-          >
-        </span>
       </div>
     `;
   }
 
   private _renderSelectedModelInfo(m: OpenRouterModel) {
+    const l = this._l;
     const sp = m.supported_parameters || [];
     const pricing = m.pricing || {};
     const arch = m.architecture || {};
     return html`
       <div class="model-selected-info">
         <div class="msi-row">
-          <span class="msi-label">Model ID</span>
-          <span class="msi-value">${m.id}</span>
+          <span class="msi-label">${l.context}</span>
+          <span class="msi-value">${m.context_length?.toLocaleString()} tokens</span>
         </div>
         <div class="msi-row">
-          <span class="msi-label">Context</span>
-          <span class="msi-value"
-            >${m.context_length?.toLocaleString()} tokens</span
-          >
+          <span class="msi-label">${l.maxOutput}</span>
+          <span class="msi-value">${m.top_provider?.max_completion_tokens?.toLocaleString() || '-'} tokens</span>
         </div>
         <div class="msi-row">
-          <span class="msi-label">Max Output</span>
-          <span class="msi-value"
-            >${m.top_provider?.max_completion_tokens?.toLocaleString() || '-'}
-            tokens</span
-          >
-        </div>
-        <div class="msi-row">
-          <span class="msi-label">Modality</span>
+          <span class="msi-label">${l.modality}</span>
           <span class="msi-value">${arch.modality || '-'}</span>
         </div>
         <div class="msi-row">
-          <span class="msi-label">Pricing (in/out)</span>
-          <span class="msi-value"
-            >${formatPrice(pricing.prompt)} /
-            ${formatPrice(pricing.completion)}</span
-          >
+          <span class="msi-label">${l.pricing}</span>
+          <span class="msi-value">${formatPrice(pricing.prompt)} / ${formatPrice(pricing.completion)}</span>
         </div>
         ${sp.length
           ? html`
               <div style="margin-top: 6px;">
-                <span class="msi-label" style="font-size: 10.5px;"
-                  >Supported parameters</span
-                >
+                <span class="msi-label" style="font-size: 10.5px;">${l.supportedParameters}</span>
                 <div class="supported-params">
                   ${sp.map((p) => html`<span class="param-tag">${p}</span>`)}
                 </div>
@@ -656,79 +686,254 @@ export class PromptConfigElement extends LitElement {
     `;
   }
 
-  // ── Section: Prompts ────────────────────────────────────────────────────
-
-  private _renderPrompts(v: PromptConfig) {
+  private _renderPromptsSection(v: PromptConfig) {
+    const l = this._l;
     const vars = this._templateVars;
     return html`
-      <div class="field">
-        <label>System Prompt</label>
-        <textarea
-          rows="4"
-          .value=${v.systemPrompt || ''}
-          placeholder="You are a helpful assistant that..."
-          @input=${(e: Event) =>
-            this._updateConfig({
-              systemPrompt: (e.target as HTMLTextAreaElement).value,
-            })}
-        ></textarea>
-      </div>
-      <div class="field">
-        <div class="label-row">
-          <label>User Prompt Template</label>
-          <span class="label-hint">Use {{variable}} for placeholders</span>
-        </div>
-        <textarea
-          rows="3"
-          .value=${v.userPromptTemplate || ''}
-          placeholder="Summarize this article:\n\n{{article_text}}"
-          @input=${(e: Event) =>
-            this._updateConfig({
-              userPromptTemplate: (e.target as HTMLTextAreaElement).value,
-            })}
-        ></textarea>
-      </div>
-      ${vars.length
-        ? html`
-            <div class="field">
-              <label>Sample Inputs (for testing)</label>
-              <div class="var-grid">
-                ${vars.map(
-                  (varName) => html`
-                    <span class="var-label">{{${varName}}}</span>
-                    <input
-                      type="text"
-                      .value=${v.sampleInputs?.[varName] || ''}
-                      placeholder="Sample value..."
-                      @input=${(e: Event) =>
-                        this._updateConfig({
-                          sampleInputs: {
-                            ...v.sampleInputs,
-                            [varName]: (e.target as HTMLInputElement).value,
-                          },
-                        })}
-                    />
-                  `
-                )}
-              </div>
+      <div class="section">
+        <div class="section-body" style="padding-top: 16px;">
+          <div class="field">
+            <label>${l.systemPrompt}</label>
+            <textarea
+              rows="4"
+              .value=${v.systemPrompt || ''}
+              placeholder=${l.placeholderSystemPrompt}
+              @input=${(e: Event) =>
+                this._updateConfig({
+                  systemPrompt: (e.target as HTMLTextAreaElement).value,
+                })}
+            ></textarea>
+          </div>
+          <div class="field">
+            <div class="label-row">
+              <label>${l.userPromptTemplate}</label>
+              <span class="label-hint">${l.hintTemplateVars}</span>
             </div>
-          `
-        : nothing}
+            <textarea
+              rows="3"
+              .value=${v.userPromptTemplate || ''}
+              placeholder=${l.placeholderUserPrompt}
+              @input=${(e: Event) =>
+                this._updateConfig({
+                  userPromptTemplate: (e.target as HTMLTextAreaElement).value,
+                })}
+            ></textarea>
+          </div>
+          ${vars.length
+            ? html`
+                <div class="field">
+                  <label>${l.sampleInputs}</label>
+                  <div class="var-grid">
+                    ${vars.map(
+                      (varName) => html`
+                        <span class="var-label">{{${varName}}}</span>
+                        <input
+                          type="text"
+                          .value=${v.sampleInputs?.[varName] || ''}
+                          placeholder=${l.placeholderSampleValue}
+                          @input=${(e: Event) =>
+                            this._updateConfig({
+                              sampleInputs: {
+                                ...v.sampleInputs,
+                                [varName]: (e.target as HTMLInputElement).value,
+                              },
+                            })}
+                        />
+                      `
+                    )}
+                  </div>
+                </div>
+              `
+            : nothing}
+        </div>
+      </div>
     `;
   }
 
-  // ── Section: Parameters ─────────────────────────────────────────────────
+  private _renderAdvancedSection(v: PromptConfig) {
+    const l = this._l;
+    return html`
+      <div class="section">
+        <div
+          class="section-header"
+          @click=${() => (this._advancedOpen = !this._advancedOpen)}
+        >
+          <svg
+            class="section-chevron ${this._advancedOpen ? 'open' : ''}"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+          <span class="section-label">${l.advancedSettings}</span>
+        </div>
+        ${this._advancedOpen
+          ? html`
+              <div class="section-body">
+                ${this._renderParameters(v)}
+                <hr class="divider" />
+                ${this._renderResponse(v)}
+                <hr class="divider" />
+                ${this._renderTools(v)}
+                <hr class="divider" />
+                ${this._renderReasoning(v)}
+              </div>
+            `
+          : nothing}
+      </div>
+    `;
+  }
+
+  // ── Parameters ──────────────────────────────────────────────────────────
 
   private _renderParameters(v: PromptConfig) {
+    const l = this._l;
     const sp = this._supportedParams;
     const has = (p: string) => !sp.length || sp.includes(p);
 
     return html`
-      <div class="${has('temperature') ? '' : 'not-supported'}">
-        <div class="field">
+      <div class="subsection">
+        <div class="subsection-title">${l.parameters}</div>
+
+        <div class="${has('temperature') ? '' : 'not-supported'}">
+          <div class="field">
+            <div class="label-row">
+              <label>${l.temperature}</label>
+              <span class="label-hint">${v.temperature}</span>
+            </div>
+            <div class="slider-row">
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.05"
+                .value=${String(v.temperature)}
+                @input=${(e: Event) =>
+                  this._updateConfig({
+                    temperature: parseFloat((e.target as HTMLInputElement).value),
+                  })}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field ${has('max_tokens') ? '' : 'not-supported'}">
+            <label>${l.maxTokens}</label>
+            <input
+              type="number"
+              min="1"
+              max="1000000"
+              .value=${String(v.maxTokens || '')}
+              @input=${(e: Event) =>
+                this._updateConfig({
+                  maxTokens: parseInt((e.target as HTMLInputElement).value) || 0,
+                })}
+            />
+          </div>
+          <div class="field ${has('top_p') ? '' : 'not-supported'}">
+            <div class="label-row">
+              <label>${l.topP}</label>
+              <span class="label-hint">${v.topP}</span>
+            </div>
+            <div class="slider-row">
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                .value=${String(v.topP)}
+                @input=${(e: Event) =>
+                  this._updateConfig({
+                    topP: parseFloat((e.target as HTMLInputElement).value),
+                  })}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field ${has('top_k') ? '' : 'not-supported'}">
+            <label>${l.topK}</label>
+            <input
+              type="number"
+              min="0"
+              max="500"
+              .value=${String(v.topK || '')}
+              @input=${(e: Event) =>
+                this._updateConfig({
+                  topK: parseInt((e.target as HTMLInputElement).value) || 0,
+                })}
+            />
+          </div>
+          <div class="field ${has('min_p') ? '' : 'not-supported'}">
+            <div class="label-row">
+              <label>${l.minP}</label>
+              <span class="label-hint">${v.minP}</span>
+            </div>
+            <div class="slider-row">
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                .value=${String(v.minP)}
+                @input=${(e: Event) =>
+                  this._updateConfig({
+                    minP: parseFloat((e.target as HTMLInputElement).value),
+                  })}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field ${has('frequency_penalty') ? '' : 'not-supported'}">
+            <div class="label-row">
+              <label>${l.frequencyPenalty}</label>
+              <span class="label-hint">${v.frequencyPenalty}</span>
+            </div>
+            <div class="slider-row">
+              <input
+                type="range"
+                min="-2"
+                max="2"
+                step="0.1"
+                .value=${String(v.frequencyPenalty)}
+                @input=${(e: Event) =>
+                  this._updateConfig({
+                    frequencyPenalty: parseFloat((e.target as HTMLInputElement).value),
+                  })}
+              />
+            </div>
+          </div>
+          <div class="field ${has('presence_penalty') ? '' : 'not-supported'}">
+            <div class="label-row">
+              <label>${l.presencePenalty}</label>
+              <span class="label-hint">${v.presencePenalty}</span>
+            </div>
+            <div class="slider-row">
+              <input
+                type="range"
+                min="-2"
+                max="2"
+                step="0.1"
+                .value=${String(v.presencePenalty)}
+                @input=${(e: Event) =>
+                  this._updateConfig({
+                    presencePenalty: parseFloat((e.target as HTMLInputElement).value),
+                  })}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="field ${has('repetition_penalty') ? '' : 'not-supported'}">
           <div class="label-row">
-            <label>Temperature</label>
-            <span class="label-hint">${v.temperature}</span>
+            <label>${l.repetitionPenalty}</label>
+            <span class="label-hint">${v.repetitionPenalty}</span>
           </div>
           <div class="slider-row">
             <input
@@ -736,180 +941,39 @@ export class PromptConfigElement extends LitElement {
               min="0"
               max="2"
               step="0.05"
-              .value=${String(v.temperature)}
+              .value=${String(v.repetitionPenalty)}
               @input=${(e: Event) =>
                 this._updateConfig({
-                  temperature: parseFloat(
-                    (e.target as HTMLInputElement).value
-                  ),
+                  repetitionPenalty: parseFloat((e.target as HTMLInputElement).value),
                 })}
             />
           </div>
         </div>
-      </div>
 
-      <div class="field-row">
-        <div class="field ${has('max_tokens') ? '' : 'not-supported'}">
-          <label>Max Tokens</label>
-          <input
-            type="number"
-            min="1"
-            max="1000000"
-            .value=${String(v.maxTokens || '')}
-            @input=${(e: Event) =>
-              this._updateConfig({
-                maxTokens:
-                  parseInt((e.target as HTMLInputElement).value) || 0,
-              })}
-          />
-        </div>
-        <div class="field ${has('top_p') ? '' : 'not-supported'}">
+        <div class="field ${has('stop') ? '' : 'not-supported'}">
           <div class="label-row">
-            <label>Top P</label>
-            <span class="label-hint">${v.topP}</span>
+            <label>${l.stopSequences}</label>
+            <span class="label-hint">${l.hintOnePerLine}</span>
           </div>
-          <div class="slider-row">
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              .value=${String(v.topP)}
-              @input=${(e: Event) =>
-                this._updateConfig({
-                  topP: parseFloat((e.target as HTMLInputElement).value),
-                })}
-            />
-          </div>
+          <textarea
+            rows="2"
+            .value=${this._stopSeqText}
+            placeholder=${l.placeholderStopSequences}
+            @input=${(e: Event) => {
+              this._stopSeqText = (e.target as HTMLTextAreaElement).value;
+              const seqs = this._stopSeqText.split('\n').filter((s) => s.length > 0);
+              this._updateConfig({ stopSequences: seqs });
+            }}
+          ></textarea>
         </div>
-      </div>
-
-      <div class="field-row">
-        <div class="field ${has('top_k') ? '' : 'not-supported'}">
-          <label>Top K</label>
-          <input
-            type="number"
-            min="0"
-            max="500"
-            .value=${String(v.topK || '')}
-            @input=${(e: Event) =>
-              this._updateConfig({
-                topK: parseInt((e.target as HTMLInputElement).value) || 0,
-              })}
-          />
-        </div>
-        <div class="field ${has('min_p') ? '' : 'not-supported'}">
-          <div class="label-row">
-            <label>Min P</label>
-            <span class="label-hint">${v.minP}</span>
-          </div>
-          <div class="slider-row">
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              .value=${String(v.minP)}
-              @input=${(e: Event) =>
-                this._updateConfig({
-                  minP: parseFloat((e.target as HTMLInputElement).value),
-                })}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div class="field-row">
-        <div class="field ${has('frequency_penalty') ? '' : 'not-supported'}">
-          <div class="label-row">
-            <label>Frequency Penalty</label>
-            <span class="label-hint">${v.frequencyPenalty}</span>
-          </div>
-          <div class="slider-row">
-            <input
-              type="range"
-              min="-2"
-              max="2"
-              step="0.1"
-              .value=${String(v.frequencyPenalty)}
-              @input=${(e: Event) =>
-                this._updateConfig({
-                  frequencyPenalty: parseFloat(
-                    (e.target as HTMLInputElement).value
-                  ),
-                })}
-            />
-          </div>
-        </div>
-        <div class="field ${has('presence_penalty') ? '' : 'not-supported'}">
-          <div class="label-row">
-            <label>Presence Penalty</label>
-            <span class="label-hint">${v.presencePenalty}</span>
-          </div>
-          <div class="slider-row">
-            <input
-              type="range"
-              min="-2"
-              max="2"
-              step="0.1"
-              .value=${String(v.presencePenalty)}
-              @input=${(e: Event) =>
-                this._updateConfig({
-                  presencePenalty: parseFloat(
-                    (e.target as HTMLInputElement).value
-                  ),
-                })}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div class="field ${has('repetition_penalty') ? '' : 'not-supported'}">
-        <div class="label-row">
-          <label>Repetition Penalty</label>
-          <span class="label-hint">${v.repetitionPenalty}</span>
-        </div>
-        <div class="slider-row">
-          <input
-            type="range"
-            min="0"
-            max="2"
-            step="0.05"
-            .value=${String(v.repetitionPenalty)}
-            @input=${(e: Event) =>
-              this._updateConfig({
-                repetitionPenalty: parseFloat(
-                  (e.target as HTMLInputElement).value
-                ),
-              })}
-          />
-        </div>
-      </div>
-
-      <div class="field ${has('stop') ? '' : 'not-supported'}">
-        <div class="label-row">
-          <label>Stop Sequences</label>
-          <span class="label-hint">one per line</span>
-        </div>
-        <textarea
-          rows="2"
-          .value=${this._stopSeqText}
-          placeholder="Enter stop sequences, one per line"
-          @input=${(e: Event) => {
-            this._stopSeqText = (e.target as HTMLTextAreaElement).value;
-            const seqs = this._stopSeqText
-              .split('\n')
-              .filter((s) => s.length > 0);
-            this._updateConfig({ stopSequences: seqs });
-          }}
-        ></textarea>
       </div>
     `;
   }
 
-  // ── Section: Response Format ────────────────────────────────────────────
+  // ── Response Format ─────────────────────────────────────────────────────
 
   private _renderResponse(v: PromptConfig) {
+    const l = this._l;
     const sp = this._supportedParams;
     const hasStructured =
       !sp.length ||
@@ -917,65 +981,71 @@ export class PromptConfigElement extends LitElement {
       sp.includes('response_format');
 
     return html`
-      <div class="field ${hasStructured ? '' : 'not-supported'}">
-        <label>Response Format</label>
-        <select
-          .value=${v.responseFormat || 'text'}
-          @change=${(e: Event) =>
-            this._updateConfig({
-              responseFormat: (e.target as HTMLSelectElement)
-                .value as PromptConfig['responseFormat'],
-            })}
-        >
-          <option value="text">Text (default)</option>
-          <option value="json_object">JSON Object</option>
-          <option value="json_schema">JSON Schema (structured output)</option>
-        </select>
-      </div>
-      ${v.responseFormat === 'json_schema'
-        ? html`
-            <div class="field">
-              <div class="label-row">
-                <label>JSON Schema</label>
-                <span class="label-hint">OpenAI-compatible schema object</span>
+      <div class="subsection">
+        <div class="subsection-title">${l.responseFormat}</div>
+
+        <div class="field ${hasStructured ? '' : 'not-supported'}">
+          <label>${l.format}</label>
+          <select
+            .value=${v.responseFormat || 'text'}
+            @change=${(e: Event) =>
+              this._updateConfig({
+                responseFormat: (e.target as HTMLSelectElement).value as PromptConfig['responseFormat'],
+              })}
+          >
+            <option value="text">${l.formatText}</option>
+            <option value="json_object">${l.formatJsonObject}</option>
+            <option value="json_schema">${l.formatJsonSchema}</option>
+          </select>
+        </div>
+        ${v.responseFormat === 'json_schema'
+          ? html`
+              <div class="field">
+                <div class="label-row">
+                  <label>${l.jsonSchema}</label>
+                  <span class="label-hint">${l.hintOpenAISchema}</span>
+                </div>
+                <textarea
+                  rows="6"
+                  .value=${this._schemaText}
+                  placeholder=${l.placeholderJsonSchema}
+                  @input=${(e: Event) => {
+                    this._schemaText = (e.target as HTMLTextAreaElement).value;
+                    try {
+                      const parsed = JSON.parse(this._schemaText);
+                      this._updateConfig({ jsonSchema: parsed });
+                    } catch {
+                      /* let them keep typing */
+                    }
+                  }}
+                ></textarea>
               </div>
-              <textarea
-                rows="8"
-                .value=${this._schemaText}
-                placeholder='{"name": "my_schema", "strict": true, "schema": { "type": "object", "properties": { ... } } }'
-                @input=${(e: Event) => {
-                  this._schemaText = (e.target as HTMLTextAreaElement).value;
-                  try {
-                    const parsed = JSON.parse(this._schemaText);
-                    this._updateConfig({ jsonSchema: parsed });
-                  } catch {
-                    /* let them keep typing */
-                  }
-                }}
-              ></textarea>
-            </div>
-          `
-        : nothing}
+            `
+          : nothing}
+      </div>
     `;
   }
 
-  // ── Section: Tools ──────────────────────────────────────────────────────
+  // ── Tools ───────────────────────────────────────────────────────────────
 
   private _renderTools(v: PromptConfig) {
+    const l = this._l;
     const sp = this._supportedParams;
     const hasTools = !sp.length || sp.includes('tools');
 
     return html`
-      <div class="${hasTools ? '' : 'not-supported'}">
+      <div class="subsection ${hasTools ? '' : 'not-supported'}">
+        <div class="subsection-title">${l.tools}</div>
+
         <div class="field">
           <div class="label-row">
-            <label>Tool Definitions</label>
-            <span class="label-hint">OpenAI-compatible tools array</span>
+            <label>${l.toolDefinitions}</label>
+            <span class="label-hint">${l.hintOpenAITools}</span>
           </div>
           <textarea
-            rows="10"
+            rows="6"
             .value=${this._toolsText}
-            placeholder='[{ "type": "function", "function": { "name": "get_weather", "description": "...", "parameters": { ... } } }]'
+            placeholder=${l.placeholderToolDefinitions}
             @input=${(e: Event) => {
               this._toolsText = (e.target as HTMLTextAreaElement).value;
               try {
@@ -990,32 +1060,34 @@ export class PromptConfigElement extends LitElement {
           ></textarea>
         </div>
         <div class="field">
-          <label>Tool Choice</label>
+          <label>${l.toolChoice}</label>
           <select
             .value=${v.toolChoice || 'auto'}
             @change=${(e: Event) =>
               this._updateConfig({
-                toolChoice: (e.target as HTMLSelectElement)
-                  .value as PromptConfig['toolChoice'],
+                toolChoice: (e.target as HTMLSelectElement).value as PromptConfig['toolChoice'],
               })}
           >
-            <option value="auto">Auto</option>
-            <option value="none">None</option>
-            <option value="required">Required</option>
+            <option value="auto">${l.toolChoiceAuto}</option>
+            <option value="none">${l.toolChoiceNone}</option>
+            <option value="required">${l.toolChoiceRequired}</option>
           </select>
         </div>
       </div>
     `;
   }
 
-  // ── Section: Reasoning ──────────────────────────────────────────────────
+  // ── Reasoning ───────────────────────────────────────────────────────────
 
   private _renderReasoning(v: PromptConfig) {
+    const l = this._l;
     const sp = this._supportedParams;
     const hasReasoning = !sp.length || sp.includes('reasoning');
 
     return html`
-      <div class="${hasReasoning ? '' : 'not-supported'}">
+      <div class="subsection ${hasReasoning ? '' : 'not-supported'}">
+        <div class="subsection-title">${l.reasoning}</div>
+
         <div class="field">
           <div class="toggle-row">
             <label class="toggle">
@@ -1029,99 +1101,28 @@ export class PromptConfigElement extends LitElement {
               />
               <span class="toggle-track"></span>
             </label>
-            <span>Enable extended thinking / reasoning</span>
+            <span>${l.enableReasoning}</span>
           </div>
         </div>
         ${v.reasoning
           ? html`
               <div class="field">
-                <label>Reasoning Effort</label>
+                <label>${l.reasoningEffort}</label>
                 <select
                   .value=${v.reasoningEffort || 'medium'}
                   @change=${(e: Event) =>
                     this._updateConfig({
-                      reasoningEffort: (e.target as HTMLSelectElement)
-                        .value as PromptConfig['reasoningEffort'],
+                      reasoningEffort: (e.target as HTMLSelectElement).value as PromptConfig['reasoningEffort'],
                     })}
                 >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
+                  <option value="low">${l.reasoningLow}</option>
+                  <option value="medium">${l.reasoningMedium}</option>
+                  <option value="high">${l.reasoningHigh}</option>
                 </select>
               </div>
             `
           : nothing}
       </div>
-    `;
-  }
-
-  // ── Section: Test ───────────────────────────────────────────────────────
-
-  private _renderTest(v: PromptConfig) {
-    const vars = this._templateVars;
-    const hasUnfilled = vars.some((vn) => !v.sampleInputs?.[vn]);
-    const noModel = !v.model;
-    const noPrompt = !v.systemPrompt && !v.userPromptTemplate;
-    const disabled = noModel || noPrompt || this._testLoading;
-
-    return html`
-      <div class="test-bar">
-        <button class="primary" ?disabled=${disabled} @click=${this._onTest}>
-          ${this._testLoading
-            ? html`<span class="spinner"></span> Testing...`
-            : html`
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-                Test Prompt
-              `}
-        </button>
-        ${noModel
-          ? html`<span
-              style="font-size:11px; color:var(--pc-text-muted)"
-              >Select a model first</span
-            >`
-          : nothing}
-        ${!noModel && noPrompt
-          ? html`<span
-              style="font-size:11px; color:var(--pc-text-muted)"
-              >Add a prompt first</span
-            >`
-          : nothing}
-        ${!noModel && !noPrompt && hasUnfilled
-          ? html`<span style="font-size:11px; color:var(--pc-accent)"
-              >Warning: Some template variables are empty</span
-            >`
-          : nothing}
-      </div>
-
-      ${this._testResult
-        ? html`
-            <div class="test-result success">
-              <div class="test-result-header">Response</div>
-              <div class="test-result-body">
-                ${typeof this._testResult === 'string'
-                  ? this._testResult
-                  : JSON.stringify(this._testResult, null, 2)}
-              </div>
-            </div>
-          `
-        : nothing}
-      ${this._testError
-        ? html`
-            <div class="test-result error">
-              <div class="test-result-header">Error</div>
-              <div class="test-result-body">${this._testError}</div>
-            </div>
-          `
-        : nothing}
     `;
   }
 }

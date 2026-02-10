@@ -7,6 +7,10 @@ export interface PromptConfig {
   id: string;
   /** Human-readable display name */
   name: string;
+  /** Description of what this prompt does */
+  description: string;
+  /** Provider ID (e.g., "anthropic", "openai") */
+  provider: string;
   /** OpenRouter model ID (e.g., "anthropic/claude-sonnet-4-5") */
   model: string;
   /** System message */
@@ -138,4 +142,106 @@ export interface PromptTestDetail {
   payload: OpenRouterPayload;
   /** Template variables resolved with sampleInputs */
   resolvedMessages: Message[];
+}
+
+/**
+ * UI labels for internationalization.
+ * All user-facing strings can be overridden via the `labels` property.
+ */
+export interface Labels {
+  // Headers
+  promptConfiguration: string;
+  advancedConfiguration: string;
+  advancedSettings: string;
+
+  // Buttons
+  import: string;
+  export: string;
+  save: string;
+  testPrompt: string;
+  testing: string;
+  copy: string;
+  copied: string;
+
+  // Field labels
+  name: string;
+  description: string;
+  provider: string;
+  model: string;
+  configId: string;
+  systemPrompt: string;
+  userPromptTemplate: string;
+  sampleInputs: string;
+  temperature: string;
+  maxTokens: string;
+  topP: string;
+  topK: string;
+  minP: string;
+  frequencyPenalty: string;
+  presencePenalty: string;
+  repetitionPenalty: string;
+  stopSequences: string;
+  format: string;
+  jsonSchema: string;
+  toolDefinitions: string;
+  toolChoice: string;
+  reasoningEffort: string;
+
+  // Subsection titles
+  parameters: string;
+  responseFormat: string;
+  tools: string;
+  reasoning: string;
+
+  // Placeholders
+  placeholderName: string;
+  placeholderDescription: string;
+  placeholderSelectProvider: string;
+  placeholderSelectModel: string;
+  placeholderSelectProviderFirst: string;
+  placeholderLoading: string;
+  placeholderSystemPrompt: string;
+  placeholderUserPrompt: string;
+  placeholderSampleValue: string;
+  placeholderStopSequences: string;
+  placeholderJsonSchema: string;
+  placeholderToolDefinitions: string;
+
+  // Hints
+  hintTemplateVars: string;
+  hintOnePerLine: string;
+  hintOpenAISchema: string;
+  hintOpenAITools: string;
+
+  // Status messages
+  statusSelectModel: string;
+  statusAddPrompt: string;
+  statusTemplateVarsEmpty: string;
+
+  // Response format options
+  formatText: string;
+  formatJsonObject: string;
+  formatJsonSchema: string;
+
+  // Tool choice options
+  toolChoiceAuto: string;
+  toolChoiceNone: string;
+  toolChoiceRequired: string;
+
+  // Reasoning options
+  reasoningLow: string;
+  reasoningMedium: string;
+  reasoningHigh: string;
+  enableReasoning: string;
+
+  // Model info
+  context: string;
+  maxOutput: string;
+  modality: string;
+  pricing: string;
+  supportedParameters: string;
+
+  // Test results
+  response: string;
+  error: string;
 }

@@ -1,8 +1,8 @@
 // Main component
-export { PromptConfigElement } from './prompt-config.js';
+export { PromptConfigElement, type PromptConfigVariant } from './prompt-config.js';
 
 // Constants
-export { DEFAULT_CONFIG, ALL_SECTIONS, PROVIDER_META } from './constants.js';
+export { DEFAULT_CONFIG, ALL_SECTIONS, PROVIDER_META, DEFAULT_LABELS } from './constants.js';
 
 // Types
 export type {
@@ -19,6 +19,7 @@ export type {
   Message,
   OpenRouterPayload,
   PromptTestDetail,
+  Labels,
 } from './types.js';
 
 // Utilities

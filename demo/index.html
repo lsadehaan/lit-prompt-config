@@ -13,34 +13,18 @@
       background: #f5f5f4;
       color: #1c1917;
       min-height: 100vh;
+      padding: 24px;
     }
     @media (prefers-color-scheme: dark) {
       body { background: #0c0a09; color: #fafaf9; }
     }
 
-    .demo-layout {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 24px;
-      min-height: 100vh;
-    }
-    @media (max-width: 900px) {
-      .demo-layout {
-        grid-template-columns: 1fr;
-        padding: 16px;
-      }
-    }
-
-    .demo-col { display: flex; flex-direction: column; gap: 16px; }
-
     .demo-header {
-      padding: 16px 0;
+      max-width: 1200px;
+      margin: 0 auto 24px;
     }
     .demo-header h1 {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 600;
       margin-bottom: 4px;
     }
@@ -49,11 +33,34 @@
       color: #78716c;
     }
 
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    @media (max-width: 900px) {
+      .demo-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .demo-section h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #78716c;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
     .panel {
       background: #fff;
       border: 1px solid #d6d3d1;
       border-radius: 8px;
       overflow: hidden;
+      margin-top: 16px;
     }
     @media (prefers-color-scheme: dark) {
       .panel { background: #1c1917; border-color: #44403c; }
@@ -81,11 +88,11 @@
 
     pre {
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 11.5px;
+      font-size: 11px;
       line-height: 1.6;
       white-space: pre-wrap;
       word-break: break-all;
-      max-height: 600px;
+      max-height: 400px;
       overflow-y: auto;
       color: #57534e;
     }
@@ -94,13 +101,13 @@
     }
 
     .event-log {
-      max-height: 200px;
+      max-height: 150px;
       overflow-y: auto;
     }
     .event-item {
-      padding: 6px 0;
+      padding: 4px 0;
       border-bottom: 1px solid #f5f5f4;
-      font-size: 12px;
+      font-size: 11px;
     }
     @media (prefers-color-scheme: dark) {
       .event-item { border-color: #292524; }
@@ -113,7 +120,7 @@
     .event-item .event-time {
       color: #a8a29e;
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 10.5px;
+      font-size: 10px;
     }
 
     .badge {
@@ -125,48 +132,33 @@
       font-weight: 500;
     }
 
-    .code-block {
-      background: #292524;
-      color: #d6d3d1;
-      padding: 14px;
-      border-radius: 6px;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 12px;
-      line-height: 1.7;
-      overflow-x: auto;
+    .theme-btn.active {
+      background: #d97706 !important;
+      color: white !important;
+      border-color: #d97706 !important;
     }
-    .code-block .comment { color: #78716c; }
-    .code-block .tag { color: #f59e0b; }
-    .code-block .attr { color: #60a5fa; }
-    .code-block .str { color: #34d399; }
+    @media (prefers-color-scheme: dark) {
+      .theme-btn { color: #fafaf9; border-color: #44403c !important; }
+    }
   </style>
 </head>
 <body>
 
-  <div class="demo-layout">
-    <!-- Left: the component -->
-    <div class="demo-col">
-      <div class="demo-header">
-        <h1>&lt;prompt-config&gt;</h1>
-        <p>LLM prompt management component - Models via OpenRouter</p>
-      </div>
-
-      <prompt-config id="pc" theme="auto"></prompt-config>
+  <div class="demo-header">
+    <h1>&lt;prompt-config&gt;</h1>
+    <p>LLM prompt management component - Models via OpenRouter</p>
+    <div style="margin-top: 12px; display: flex; gap: 8px;">
+      <button id="themeAuto" class="theme-btn active" style="padding: 4px 12px; font-size: 12px; border: 1px solid #d6d3d1; border-radius: 4px; background: transparent; cursor: pointer; font-family: inherit;">Auto</button>
+      <button id="themeLight" class="theme-btn" style="padding: 4px 12px; font-size: 12px; border: 1px solid #d6d3d1; border-radius: 4px; background: transparent; cursor: pointer; font-family: inherit;">Light</button>
+      <button id="themeDark" class="theme-btn" style="padding: 4px 12px; font-size: 12px; border: 1px solid #d6d3d1; border-radius: 4px; background: transparent; cursor: pointer; font-family: inherit;">Dark</button>
     </div>
+  </div>
 
-    <!-- Right: live JSON + events + usage -->
-    <div class="demo-col">
-      <div class="panel" style="flex:1; display:flex; flex-direction:column;">
-        <div class="panel-header">
-          Live JSON Output
-          <button id="copyBtn" style="font-size:11px; padding:3px 10px; border:1px solid #d6d3d1; border-radius:4px; background:transparent; cursor:pointer; color:inherit; font-family:inherit;">
-            Copy
-          </button>
-        </div>
-        <div class="panel-body" style="flex:1; overflow:auto;">
-          <pre id="jsonOutput">Loading...</pre>
-        </div>
-      </div>
+  <div class="demo-grid">
+    <!-- Left: Card variant -->
+    <div class="demo-section">
+      <h2>Card Variant</h2>
+      <prompt-config id="pc-card" variant="card" theme="auto"></prompt-config>
 
       <div class="panel">
         <div class="panel-header">
@@ -175,53 +167,48 @@
         </div>
         <div class="panel-body">
           <div class="event-log" id="eventLog">
-            <div style="color:#a8a29e; font-size:12px;">Waiting for events...</div>
+            <div style="color:#a8a29e; font-size:11px;">Waiting for events...</div>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Right: Full variant (or expanded card) -->
+    <div class="demo-section">
+      <h2>Full Variant</h2>
+      <prompt-config id="pc-full" variant="full" theme="auto"></prompt-config>
 
       <div class="panel">
-        <div class="panel-header">Usage Example</div>
+        <div class="panel-header">
+          Live JSON Output
+          <button id="copyBtn" style="font-size:10px; padding:2px 8px; border:1px solid #d6d3d1; border-radius:4px; background:transparent; cursor:pointer; color:inherit; font-family:inherit;">
+            Copy
+          </button>
+        </div>
         <div class="panel-body">
-          <div class="code-block"><span class="comment">// HTML</span>
-<span class="tag">&lt;prompt-config</span>
-  <span class="attr">.value</span>=<span class="str">${JSON.stringify({...})}</span>
-  <span class="attr">.providerFilter</span>=<span class="str">${['anthropic','openai']}</span>
-  <span class="attr">@prompt-change</span>=<span class="str">${(e) => save(e.detail)}</span>
-  <span class="attr">@prompt-test</span>=<span class="str">${async (e) => {
-    e.target.setTestLoading(true);
-    const r = await api(e.detail.payload);
-    e.target.setTestResult(r);
-  }}</span>
-<span class="tag">&gt;&lt;/prompt-config&gt;</span>
-
-<span class="comment">// The test event payload includes:</span>
-<span class="comment">// e.detail.config  - full config object</span>
-<span class="comment">// e.detail.payload - OpenRouter-compatible request body</span>
-<span class="comment">// Send payload to your backend, forward to OpenRouter</span></div>
+          <pre id="jsonOutput">Loading...</pre>
         </div>
       </div>
     </div>
   </div>
 
   <script type="module">
-    // Development: import from source
-    // import '../src/index.ts';
+    import '../src/index.ts';
 
-    // Production: import from built bundle
-    import '../dist/lit-prompt-config.bundled.js';
-
-    const pc = document.getElementById('pc');
+    const pcCard = document.getElementById('pc-card');
+    const pcFull = document.getElementById('pc-full');
     const jsonOutput = document.getElementById('jsonOutput');
     const eventLog = document.getElementById('eventLog');
     const eventCount = document.getElementById('eventCount');
     const copyBtn = document.getElementById('copyBtn');
     let count = 0;
 
-    // Set initial value
-    pc.value = {
+    // Shared initial value
+    const initialValue = {
       id: 'demo-summarizer',
       name: 'Article Summarizer',
+      description: 'Summarizes articles into key bullet points',
+      provider: 'anthropic',
       model: '',
       systemPrompt: 'You are a concise article summarizer. Extract the key points and present them clearly.',
       userPromptTemplate: 'Please summarize the following article in {{num_sentences}} sentences:\n\n{{article_text}}',
@@ -242,43 +229,55 @@
       reasoningEffort: 'medium',
       sampleInputs: {
         num_sentences: '3',
-        article_text: 'Artificial intelligence continues to reshape industries worldwide. From healthcare diagnostics to autonomous vehicles, AI applications are expanding rapidly. Recent advances in large language models have particularly accelerated the pace of change.'
+        article_text: 'Artificial intelligence continues to reshape industries worldwide. From healthcare diagnostics to autonomous vehicles, AI applications are expanding rapidly.'
       },
       metadata: {}
     };
 
-    // Update JSON display
+    // Set initial values (both components share the same config)
+    pcCard.value = { ...initialValue };
+    pcFull.value = { ...initialValue };
+
+    // Sync changes between components
+    function syncConfig(source, target, config) {
+      target.value = { ...config };
+      updateJson(config);
+    }
+
     function updateJson(config) {
       jsonOutput.textContent = JSON.stringify(config, null, 2);
     }
-    updateJson(pc.value);
+    updateJson(pcFull.value);
 
-    // Listen to events
-    pc.addEventListener('prompt-change', (e) => {
-      updateJson(e.detail);
-      logEvent('prompt-change', 'Config updated');
+    // Listen to card events
+    pcCard.addEventListener('prompt-change', (e) => {
+      syncConfig(pcCard, pcFull, e.detail);
+      logEvent('prompt-change', 'Card: Config updated');
     });
 
-    pc.addEventListener('prompt-save', (e) => {
-      updateJson(e.detail);
-      logEvent('prompt-save', 'Save requested');
+    // Listen to full events
+    pcFull.addEventListener('prompt-change', (e) => {
+      syncConfig(pcFull, pcCard, e.detail);
+      logEvent('prompt-change', 'Full: Config updated');
     });
 
-    pc.addEventListener('prompt-test', async (e) => {
-      logEvent('prompt-test', `Model: ${e.detail.config.model}`);
-      pc.setTestLoading(true);
+    // Test handlers
+    [pcCard, pcFull].forEach(pc => {
+      pc.addEventListener('prompt-save', (e) => {
+        logEvent('prompt-save', 'Save requested');
+      });
 
-      // Simulate a backend call
-      await new Promise(r => setTimeout(r, 1500));
+      pc.addEventListener('prompt-test', async (e) => {
+        logEvent('prompt-test', `Testing: ${e.detail.config.model || 'no model'}`);
+        pc.setTestLoading(true);
 
-      pc.setTestResult(
-        'This is a simulated response. In production:\n\n' +
-        '1. Send e.detail.payload to your backend\n' +
-        '2. Your backend forwards it to OpenRouter\n' +
-        '3. Return the response and call setTestResult()\n\n' +
-        'Payload:\n' +
-        JSON.stringify(e.detail.payload, null, 2)
-      );
+        await new Promise(r => setTimeout(r, 1500));
+
+        pc.setTestResult(
+          'Simulated response.\n\nPayload:\n' +
+          JSON.stringify(e.detail.payload, null, 2)
+        );
+      });
     });
 
     function logEvent(name, detail) {
@@ -300,6 +299,26 @@
       copyBtn.textContent = 'Copied!';
       setTimeout(() => copyBtn.textContent = 'Copy', 1500);
     });
+
+    // Theme switching
+    const themeAuto = document.getElementById('themeAuto');
+    const themeLight = document.getElementById('themeLight');
+    const themeDark = document.getElementById('themeDark');
+    const themeBtns = [themeAuto, themeLight, themeDark];
+
+    function setTheme(theme) {
+      pcCard.setAttribute('theme', theme);
+      pcFull.setAttribute('theme', theme);
+      themeBtns.forEach(btn => btn.classList.remove('active'));
+      if (theme === 'auto') themeAuto.classList.add('active');
+      if (theme === 'light') themeLight.classList.add('active');
+      if (theme === 'dark') themeDark.classList.add('active');
+      logEvent('theme-change', `Theme set to: ${theme}`);
+    }
+
+    themeAuto.addEventListener('click', () => setTheme('auto'));
+    themeLight.addEventListener('click', () => setTheme('light'));
+    themeDark.addEventListener('click', () => setTheme('dark'));
   </script>
 </body>
 </html>

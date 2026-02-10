@@ -121,9 +121,11 @@ localStorage.setItem(`prompt:${config.id}`, JSON.stringify(config));
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `value` | `PromptConfig` | `DEFAULT_CONFIG` | The configuration object |
+| `variant` | `'card' \| 'full'` | `'full'` | Display variant: compact card or full configuration |
 | `enabledSections` | `string[]` | all sections | Which UI sections to show |
 | `providerFilter` | `string[]` | `[]` (all) | Filter models to specific providers |
 | `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Color theme |
+| `labels` | `Partial<Labels>` | `{}` | Override UI labels for i18n |
 
 ### Events
 
@@ -140,6 +142,8 @@ localStorage.setItem(`prompt:${config.id}`, JSON.stringify(config));
 | `setTestResult(result)` | Display successful test response |
 | `setTestError(error)` | Display test error |
 | `setTestLoading(loading)` | Set loading state for test button |
+| `expand()` | Expand card variant to show full configuration |
+| `collapse()` | Collapse back to card view |
 
 ## Config Schema
 
@@ -147,6 +151,8 @@ localStorage.setItem(`prompt:${config.id}`, JSON.stringify(config));
 interface PromptConfig {
   id: string;                          // Unique ID for storage
   name: string;                        // Human-readable display name
+  description: string;                 // What this prompt does
+  provider: string;                    // Model provider (e.g., 'anthropic', 'openai')
   model: string;                       // OpenRouter model ID
   systemPrompt: string;                // System message
   userPromptTemplate: string;          // User message with {{variable}} placeholders
@@ -222,24 +228,131 @@ const llm = new ChatOpenAI({
 });
 ```
 
+## Internationalization (i18n)
+
+Override any UI label via the `labels` property. Pass only the labels you want to change—defaults are used for the rest.
+
+```html
+<prompt-config
+  .labels=${{
+    testPrompt: 'Tester le prompt',
+    save: 'Enregistrer',
+    temperature: 'Température',
+    maxTokens: 'Tokens max',
+    systemPrompt: 'Prompt système',
+    userPromptTemplate: 'Template utilisateur',
+    advancedSettings: 'Paramètres avancés',
+  }}
+></prompt-config>
+```
+
+### Available Labels
+
+All ~60 labels can be overridden. See the full list:
+
+```typescript
+import { DEFAULT_LABELS } from 'lit-prompt-config';
+console.log(Object.keys(DEFAULT_LABELS));
+```
+
+**Categories:**
+- **Headers:** `promptConfiguration`, `advancedConfiguration`, `advancedSettings`
+- **Buttons:** `import`, `export`, `save`, `testPrompt`, `testing`
+- **Field labels:** `name`, `description`, `provider`, `model`, `temperature`, `maxTokens`, etc.
+- **Placeholders:** `placeholderName`, `placeholderDescription`, `placeholderSystemPrompt`, etc.
+- **Status messages:** `statusSelectModel`, `statusAddPrompt`, `statusTemplateVarsEmpty`
+- **Dropdown options:** `formatText`, `formatJsonObject`, `toolChoiceAuto`, `reasoningLow`, etc.
+
+### With i18n Libraries
+
+Works with any i18n solution:
+
+```typescript
+// react-i18next
+<prompt-config .labels=${t('promptConfig', { returnObjects: true })} />
+
+// vue-i18n
+<prompt-config :labels="$tm('promptConfig')" />
+
+// Plain JSON
+import labelsEs from './locales/es.json';
+<prompt-config .labels=${labelsEs} />
+```
+
 ## Theming
 
-Customize with CSS custom properties:
+### Theme Modes
+
+The component supports three theme modes via the `theme` attribute:
+
+```html
+<!-- Auto: follows system preference (default) -->
+<prompt-config theme="auto"></prompt-config>
+
+<!-- Force light mode -->
+<prompt-config theme="light"></prompt-config>
+
+<!-- Force dark mode -->
+<prompt-config theme="dark"></prompt-config>
+```
+
+### Custom Themes
+
+Override CSS custom properties to create custom themes:
 
 ```css
+/* Custom brand colors */
 prompt-config {
-  --pc-bg: #fafaf9;
-  --pc-bg-section: #ffffff;
-  --pc-bg-input: #f5f5f4;
-  --pc-border: #d6d3d1;
-  --pc-text: #1c1917;
-  --pc-text-secondary: #57534e;
-  --pc-accent: #d97706;
-  --pc-radius: 6px;
-  --pc-font: 'Inter', sans-serif;
-  --pc-font-mono: 'Fira Code', monospace;
+  --pc-accent: #0ea5e9;        /* Sky blue accent */
+  --pc-accent-hover: #0284c7;
+  --pc-accent-bg: #f0f9ff;
+  --pc-radius: 12px;           /* Rounder corners */
+}
+
+/* Custom fonts */
+prompt-config {
+  --pc-font: 'Inter', -apple-system, sans-serif;
+  --pc-font-mono: 'Fira Code', 'JetBrains Mono', monospace;
+}
+
+/* Full dark theme override */
+prompt-config.my-dark-theme {
+  --pc-bg: #0f172a;
+  --pc-bg-section: #1e293b;
+  --pc-bg-input: #0f172a;
+  --pc-bg-hover: #334155;
+  --pc-border: #334155;
+  --pc-text: #f8fafc;
+  --pc-text-secondary: #cbd5e1;
+  --pc-text-muted: #64748b;
 }
 ```
+
+### Available CSS Custom Properties
+
+| Variable | Description | Light Default | Dark Default |
+|----------|-------------|---------------|--------------|
+| `--pc-bg` | Main background | `#fafaf9` | `#1c1917` |
+| `--pc-bg-section` | Section/card background | `#ffffff` | `#292524` |
+| `--pc-bg-input` | Input/textarea background | `#f5f5f4` | `#1c1917` |
+| `--pc-bg-hover` | Hover state background | `#e7e5e4` | `#44403c` |
+| `--pc-border` | Border color | `#d6d3d1` | `#44403c` |
+| `--pc-border-focus` | Focused input border | `#78716c` | `#a8a29e` |
+| `--pc-text` | Primary text color | `#1c1917` | `#fafaf9` |
+| `--pc-text-secondary` | Secondary text color | `#57534e` | `#d6d3d1` |
+| `--pc-text-muted` | Muted/hint text color | `#a8a29e` | `#78716c` |
+| `--pc-accent` | Primary accent color | `#d97706` | `#f59e0b` |
+| `--pc-accent-hover` | Accent hover state | `#b45309` | `#fbbf24` |
+| `--pc-accent-bg` | Accent background | `#fffbeb` | `rgba(69,26,3,0.2)` |
+| `--pc-danger` | Error/danger color | `#dc2626` | `#ef4444` |
+| `--pc-danger-bg` | Error background | `#fef2f2` | `#450a0a` |
+| `--pc-success` | Success color | `#16a34a` | `#22c55e` |
+| `--pc-success-bg` | Success background | `#f0fdf4` | `#052e16` |
+| `--pc-radius` | Border radius | `6px` | `6px` |
+| `--pc-shadow` | Box shadow | subtle | subtle |
+| `--pc-transition` | Transition timing | `150ms ease` | `150ms ease` |
+| `--pc-font` | Sans-serif font stack | IBM Plex Sans | IBM Plex Sans |
+| `--pc-font-mono` | Monospace font stack | IBM Plex Mono | IBM Plex Mono |
 
 ## Development
 
