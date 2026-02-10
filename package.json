@@ -27,6 +27,7 @@
   },
   "files": [
     "dist/",
+    "docs/",
     "helpers/langchain.py",
     "helpers/payloads.py"
   ],

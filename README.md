@@ -16,6 +16,8 @@ A lightweight, embeddable Lit web component for managing LLM prompt configuratio
 - **Themeable** — light/dark mode with CSS custom properties
 - **Tiny footprint** — ~16KB gzipped (bundled version with Lit included)
 
+> **[Full Usage Guide](./docs/USAGE.md)** — Complete integration walkthrough with diagrams, React example, database schema, and backend setup.
+
 ## Quick Start (CDN)
 
 ```html
