@@ -7,6 +7,7 @@ export default defineConfig({
     lib: {
       entry: {
         'helpers/openrouter': resolve(__dirname, 'src/helpers/openrouter.ts'),
+        'helpers/anthropic': resolve(__dirname, 'src/helpers/anthropic.ts'),
         'helpers/langchain': resolve(__dirname, 'src/helpers/langchain.ts'),
       },
       formats: ['es'],

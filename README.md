@@ -178,13 +178,18 @@ interface PromptConfig {
 
 ## Integration Helpers
 
-### OpenRouter Payload
+The component saves configs in a **provider-agnostic format**. Use these helpers to convert to provider-specific API payloads.
+
+### TypeScript / JavaScript
+
+#### OpenAI / OpenRouter
 
 ```typescript
 import { toOpenRouterPayload } from 'lit-prompt-config/helpers/openrouter';
 
 const payload = toOpenRouterPayload(config, { article_text: '...' });
 
+// Works with OpenRouter, OpenAI, Azure OpenAI, Ollama, LMStudio, etc.
 const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
   method: 'POST',
   headers: {
@@ -195,19 +200,19 @@ const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 });
 ```
 
-### LangChain (Python)
+#### Anthropic
 
-```python
-from helpers.langchain import from_config
+```typescript
+import { toAnthropicPayload } from 'lit-prompt-config/helpers/anthropic';
+import Anthropic from '@anthropic-ai/sdk';
 
-config = load_config_from_db()
-prompt, llm = from_config(config, api_key="sk-...")
+const payload = toAnthropicPayload(config, { article_text: '...' });
 
-chain = prompt | llm
-result = chain.invoke({"article_text": "..."})
+const anthropic = new Anthropic();
+const response = await anthropic.messages.create(payload);
 ```
 
-### LangChain.js
+#### LangChain.js
 
 ```typescript
 import { toPromptTemplate, getModelConfig } from 'lit-prompt-config/helpers/langchain';
@@ -226,6 +231,47 @@ const llm = new ChatOpenAI({
   ...modelConfig,
   configuration: { baseURL: 'https://openrouter.ai/api/v1' },
 });
+```
+
+### Python
+
+#### OpenAI / OpenRouter
+
+```python
+from helpers.payloads import to_openai_payload
+import requests
+
+payload = to_openai_payload(config, {"article_text": "..."})
+
+response = requests.post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
+    json=payload
+)
+```
+
+#### Anthropic
+
+```python
+from helpers.payloads import to_anthropic_payload
+import anthropic
+
+payload = to_anthropic_payload(config, {"article_text": "..."})
+
+client = anthropic.Anthropic()
+response = client.messages.create(**payload)
+```
+
+#### LangChain
+
+```python
+from helpers.langchain import from_config
+
+config = load_config_from_db()
+prompt, llm = from_config(config, api_key="sk-...")
+
+chain = prompt | llm
+result = chain.invoke({"article_text": "..."})
 ```
 
 ## Internationalization (i18n)

@@ -16,6 +16,10 @@
       "types": "./dist/helpers/openrouter.d.ts",
       "import": "./dist/helpers/openrouter.js"
     },
+    "./helpers/anthropic": {
+      "types": "./dist/helpers/anthropic.d.ts",
+      "import": "./dist/helpers/anthropic.js"
+    },
     "./helpers/langchain": {
       "types": "./dist/helpers/langchain.d.ts",
       "import": "./dist/helpers/langchain.js"
@@ -23,7 +27,8 @@
   },
   "files": [
     "dist/",
-    "helpers/langchain.py"
+    "helpers/langchain.py",
+    "helpers/payloads.py"
   ],
   "scripts": {
     "dev": "vite",
