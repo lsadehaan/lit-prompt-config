@@ -406,16 +406,17 @@ export class PromptConfigElement extends LitElement {
     if (this._modelsLoading) {
       return html`<select disabled><option>${l.placeholderLoading}</option></select>`;
     }
+    // Use ?selected on <option> instead of .value on <select> to avoid
+    // Lit's PropertyPart caching issue with async-populated options
     return html`
       <select
-        .value=${v.provider || ''}
         @change=${(e: Event) =>
           this._onProviderChange((e.target as HTMLSelectElement).value)}
       >
-        <option value="">${l.placeholderSelectProvider}</option>
+        <option value="" ?selected=${!v.provider}>${l.placeholderSelectProvider}</option>
         ${this._availableProviders.map(
           ([p, count]) => html`
-            <option value=${p}>
+            <option value=${p} ?selected=${p === v.provider}>
               ${PROVIDER_META[p]?.label || p} (${count})
             </option>
           `
@@ -433,16 +434,17 @@ export class PromptConfigElement extends LitElement {
       return html`<select disabled><option>${l.placeholderSelectProviderFirst}</option></select>`;
     }
     const models = this._filteredModels;
+    // Use ?selected on <option> instead of .value on <select> to avoid
+    // Lit's PropertyPart caching issue with async-populated options
     return html`
       <select
-        .value=${v.model || ''}
         @change=${(e: Event) =>
           this._updateConfig({ model: (e.target as HTMLSelectElement).value })}
       >
-        <option value="">${l.placeholderSelectModel}</option>
+        <option value="" ?selected=${!v.model}>${l.placeholderSelectModel}</option>
         ${models.map(
           (m) => html`
-            <option value=${m.id}>${m.name}</option>
+            <option value=${m.id} ?selected=${m.id === v.model}>${m.name}</option>
           `
         )}
       </select>
@@ -987,15 +989,14 @@ export class PromptConfigElement extends LitElement {
         <div class="field ${hasStructured ? '' : 'not-supported'}">
           <label>${l.format}</label>
           <select
-            .value=${v.responseFormat || 'text'}
             @change=${(e: Event) =>
               this._updateConfig({
                 responseFormat: (e.target as HTMLSelectElement).value as PromptConfig['responseFormat'],
               })}
           >
-            <option value="text">${l.formatText}</option>
-            <option value="json_object">${l.formatJsonObject}</option>
-            <option value="json_schema">${l.formatJsonSchema}</option>
+            <option value="text" ?selected=${(v.responseFormat || 'text') === 'text'}>${l.formatText}</option>
+            <option value="json_object" ?selected=${v.responseFormat === 'json_object'}>${l.formatJsonObject}</option>
+            <option value="json_schema" ?selected=${v.responseFormat === 'json_schema'}>${l.formatJsonSchema}</option>
           </select>
         </div>
         ${v.responseFormat === 'json_schema'
@@ -1062,15 +1063,14 @@ export class PromptConfigElement extends LitElement {
         <div class="field">
           <label>${l.toolChoice}</label>
           <select
-            .value=${v.toolChoice || 'auto'}
             @change=${(e: Event) =>
               this._updateConfig({
                 toolChoice: (e.target as HTMLSelectElement).value as PromptConfig['toolChoice'],
               })}
           >
-            <option value="auto">${l.toolChoiceAuto}</option>
-            <option value="none">${l.toolChoiceNone}</option>
-            <option value="required">${l.toolChoiceRequired}</option>
+            <option value="auto" ?selected=${(v.toolChoice || 'auto') === 'auto'}>${l.toolChoiceAuto}</option>
+            <option value="none" ?selected=${v.toolChoice === 'none'}>${l.toolChoiceNone}</option>
+            <option value="required" ?selected=${v.toolChoice === 'required'}>${l.toolChoiceRequired}</option>
           </select>
         </div>
       </div>
@@ -1109,15 +1109,14 @@ export class PromptConfigElement extends LitElement {
               <div class="field">
                 <label>${l.reasoningEffort}</label>
                 <select
-                  .value=${v.reasoningEffort || 'medium'}
                   @change=${(e: Event) =>
                     this._updateConfig({
                       reasoningEffort: (e.target as HTMLSelectElement).value as PromptConfig['reasoningEffort'],
                     })}
                 >
-                  <option value="low">${l.reasoningLow}</option>
-                  <option value="medium">${l.reasoningMedium}</option>
-                  <option value="high">${l.reasoningHigh}</option>
+                  <option value="low" ?selected=${v.reasoningEffort === 'low'}>${l.reasoningLow}</option>
+                  <option value="medium" ?selected=${(v.reasoningEffort || 'medium') === 'medium'}>${l.reasoningMedium}</option>
+                  <option value="high" ?selected=${v.reasoningEffort === 'high'}>${l.reasoningHigh}</option>
                 </select>
               </div>
             `
