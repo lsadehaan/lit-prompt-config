@@ -175,6 +175,8 @@ interface PromptConfig {
   reasoningEffort: 'low' | 'medium' | 'high';
   sampleInputs: Record<string, string>; // Values for template variables
   metadata: Record<string, any>;       // User-defined metadata
+  inputCostPerMillion: number | null;  // Input token cost per 1M (auto-populated)
+  outputCostPerMillion: number | null; // Output token cost per 1M (auto-populated)
 }
 ```
 
