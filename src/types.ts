@@ -51,6 +51,10 @@ export interface PromptConfig {
   sampleInputs: Record<string, string>;
   /** User-defined metadata */
   metadata: Record<string, unknown>;
+  /** Input cost per million tokens (from OpenRouter pricing) */
+  inputCostPerMillion: number | null;
+  /** Output cost per million tokens (from OpenRouter pricing) */
+  outputCostPerMillion: number | null;
 }
 
 export type ResponseFormat = 'text' | 'json_object' | 'json_schema';
@@ -244,4 +248,7 @@ export interface Labels {
   // Test results
   response: string;
   error: string;
+
+  // Cost display
+  estimatedCost: string;
 }

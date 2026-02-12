@@ -23,4 +23,9 @@ export type {
 } from './types.js';
 
 // Utilities
-export { extractTemplateVars, resolveTemplate } from './utils.js';
+export {
+  extractTemplateVars,
+  resolveTemplate,
+  priceToCostPerMillion,
+  estimateCost,
+} from './utils.js';

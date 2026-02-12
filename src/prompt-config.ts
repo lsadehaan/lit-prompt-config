@@ -8,6 +8,8 @@ import {
   formatContextLength,
   formatPrice,
   debounce,
+  priceToCostPerMillion,
+  estimateCost,
 } from './utils.js';
 import { fetchOpenRouterModels } from './models.js';
 import type {
@@ -171,6 +173,16 @@ export class PromptConfigElement extends LitElement {
     this.value = { ...this.value, ...patch };
     this._internalUpdate = false;
     this._debouncedChange();
+  }
+
+  private _onModelSelect(modelId: string): void {
+    const model = this._models.find((m) => m.id === modelId);
+    const pricing = model?.pricing;
+    this._updateConfig({
+      model: modelId,
+      inputCostPerMillion: priceToCostPerMillion(pricing?.prompt),
+      outputCostPerMillion: priceToCostPerMillion(pricing?.completion),
+    });
   }
 
   private _emitChange(): void {
@@ -439,7 +451,7 @@ export class PromptConfigElement extends LitElement {
     return html`
       <select
         @change=${(e: Event) =>
-          this._updateConfig({ model: (e.target as HTMLSelectElement).value })}
+          this._onModelSelect((e.target as HTMLSelectElement).value)}
       >
         <option value="" ?selected=${!v.model}>${l.placeholderSelectModel}</option>
         ${models.map(
@@ -645,17 +657,27 @@ export class PromptConfigElement extends LitElement {
               ${this._renderModelDropdown(v)}
             </div>
           </div>
-          ${this._selectedModel ? this._renderSelectedModelInfo(this._selectedModel) : nothing}
+          ${this._selectedModel ? this._renderSelectedModelInfo(this._selectedModel, v) : nothing}
         </div>
       </div>
     `;
   }
 
-  private _renderSelectedModelInfo(m: OpenRouterModel) {
+  private _renderSelectedModelInfo(m: OpenRouterModel, v: PromptConfig) {
     const l = this._l;
     const sp = m.supported_parameters || [];
     const pricing = m.pricing || {};
     const arch = m.architecture || {};
+    // Estimate input tokens: rough approximation based on prompt lengths
+    // ~4 chars per token is a common approximation
+    const promptChars = (v.systemPrompt?.length || 0) + (v.userPromptTemplate?.length || 0);
+    const estimatedInputTokens = Math.max(100, Math.ceil(promptChars / 4));
+    const estCost = estimateCost(
+      estimatedInputTokens,
+      v.maxTokens || 4096,
+      v.inputCostPerMillion,
+      v.outputCostPerMillion
+    );
     return html`
       <div class="model-selected-info">
         <div class="msi-row">
@@ -674,6 +696,14 @@ export class PromptConfigElement extends LitElement {
           <span class="msi-label">${l.pricing}</span>
           <span class="msi-value">${formatPrice(pricing.prompt)} / ${formatPrice(pricing.completion)}</span>
         </div>
+        ${estCost
+          ? html`
+              <div class="msi-row">
+                <span class="msi-label">${l.estimatedCost}</span>
+                <span class="msi-value">${estCost}/call</span>
+              </div>
+            `
+          : nothing}
         ${sp.length
           ? html`
               <div style="margin-top: 6px;">

@@ -28,6 +28,8 @@ export const DEFAULT_CONFIG: PromptConfig = {
   reasoningEffort: 'medium',
   sampleInputs: {},
   metadata: {},
+  inputCostPerMillion: null,
+  outputCostPerMillion: null,
 };
 
 /**
@@ -166,4 +168,7 @@ export const DEFAULT_LABELS: Labels = {
   // Test results
   response: 'Response',
   error: 'Error',
+
+  // Cost display
+  estimatedCost: 'Est. Cost',
 };

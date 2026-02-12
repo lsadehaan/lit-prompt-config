@@ -38,10 +38,12 @@ src/
 ├── models.ts          # OpenRouter model fetching
 └── helpers/
     ├── openrouter.ts  # Config → OpenRouter API payload
+    ├── anthropic.ts   # Config → Anthropic API payload
     └── langchain.ts   # Config → LangChain.js objects
 
-helpers/
-└── langchain.py       # Config → LangChain Python
+helpers/               # Python helpers
+├── langchain.py       # Config → LangChain Python
+└── payloads.py        # Config → OpenAI/Anthropic payloads
 
 demo/
 └── index.html         # Interactive demo
@@ -52,6 +54,11 @@ dist/                  # Build outputs
 ├── index.d.ts                     # Type declarations
 └── helpers/                       # Helper modules
 ```
+
+## Development Notes
+
+- **Windows users**: `npm run clean` uses `rm -rf`, may need Git Bash or WSL
+- **Tests**: `npm test` runs Vitest. Python tests in `helpers/` require pytest.
 
 ## Build Outputs
 

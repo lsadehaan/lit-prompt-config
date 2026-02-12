@@ -52,3 +52,35 @@ export function debounce<T extends (...args: unknown[]) => void>(
     timeoutId = setTimeout(() => fn(...args), ms);
   };
 }
+
+/**
+ * Convert OpenRouter price string (per token) to cost per million tokens.
+ * Returns null if price is invalid or zero.
+ */
+export function priceToCostPerMillion(priceStr: string | undefined): number | null {
+  if (!priceStr || priceStr === '0') return null;
+  const perToken = parseFloat(priceStr);
+  if (isNaN(perToken) || perToken === 0) return null;
+  return perToken * 1_000_000;
+}
+
+/**
+ * Estimate cost for a single API call based on token counts and pricing.
+ * Returns formatted string like "$0.0012" or null if pricing unavailable.
+ */
+export function estimateCost(
+  inputTokens: number,
+  outputTokens: number,
+  inputCostPerMillion: number | null,
+  outputCostPerMillion: number | null
+): string | null {
+  if (inputCostPerMillion === null && outputCostPerMillion === null) {
+    return null;
+  }
+  const inputCost = inputCostPerMillion ? (inputTokens / 1_000_000) * inputCostPerMillion : 0;
+  const outputCost = outputCostPerMillion ? (outputTokens / 1_000_000) * outputCostPerMillion : 0;
+  const total = inputCost + outputCost;
+  if (total < 0.0001) return '<$0.0001';
+  if (total < 0.01) return `$${total.toFixed(4)}`;
+  return `$${total.toFixed(4)}`;
+}
